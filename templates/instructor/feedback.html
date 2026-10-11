@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Student Reviews — Instructor Studio{% endblock %}
+{% block current_page %}Student Reviews{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ search: '' }">
+  <!-- HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider font-mono">
+          Student Voice
+        </span>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Student Feedback & Reviews</h1>
+      </div>
+      <p class="text-xs text-slate-400 mt-1">Ratings and feedback submitted by learners across courses taught by {{ instructor.name }}.</p>
+    </div>
+    <div class="w-full sm:w-64 relative">
+      <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+      <input type="text" x-model="search" placeholder="Search comments or learner..." class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-zinc-400">
+    </div>
+  </div>
+
+  <!-- FEEDBACK TABLE -->
+  <div class="bg-slate-900 rounded-xl shadow-xs border border-slate-800 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse table-sticky-header text-xs">
+        <thead>
+          <tr class="bg-slate-950/70 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+            <th class="py-3 px-5">ID</th>
+            <th class="py-3 px-5">Learner</th>
+            <th class="py-3 px-5">Course Track</th>
+            <th class="py-3 px-5">Rating</th>
+            <th class="py-3 px-5">Comment</th>
+            <th class="py-3 px-5 text-right">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/80">
+          {% for r in feedback %}
+            <tr class="hover:bg-slate-850/60 transition-colors"
+                x-show="search === '' || '{{ r.learner_name | lower }}'.includes(search.toLowerCase()) || '{{ r.course_title | lower }}'.includes(search.toLowerCase()) || '{{ (r.comments or '') | lower }}'.includes(search.toLowerCase())">
+              <td class="py-3 px-5 font-mono text-slate-400">#{{ r.id }}</td>
+              <td class="py-3 px-5 font-semibold text-white">{{ r.learner_name }}</td>
+              <td class="py-3 px-5 text-slate-300">{{ r.course_title }}</td>
+              <td class="py-3 px-5">
+                <span class="inline-flex items-center gap-1 font-bold text-amber-400">
+                  <span>{{ r.rating }}</span>
+                  <i data-lucide="star" class="w-3.5 h-3.5 fill-current"></i>
+                </span>
+              </td>
+              <td class="py-3 px-5 text-slate-300 max-w-md">
+                <p class="italic text-slate-200">"{{ r.comments }}"</p>
+              </td>
+              <td class="py-3 px-5 text-right font-mono text-slate-400">
+                {{ r.created_at.strftime('%Y-%m-%d') if r.created_at else '-' }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

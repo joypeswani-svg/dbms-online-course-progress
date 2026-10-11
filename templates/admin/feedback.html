@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Student Feedback & Reviews — LearnPulse{% endblock %}
+{% block current_page %}Student Feedback{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ 
+  ratingFilter: 'all', 
+  courseFilter: 'all',
+  search: ''
+}">
+  <!-- HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Student Feedback & Ratings</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Reviews submitted upon completion and ongoing course engagement.</p>
+    </div>
+  </div>
+
+  <!-- RATINGS SUMMARY METRICS -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Average Rating</span>
+        <div class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{ avg_rating }} / 5.0</div>
+        <div class="flex items-center gap-1 text-amber-500 mt-1">
+          {% for i in range(5) %}
+            <i data-lucide="star" class="w-3.5 h-3.5 fill-current"></i>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-500 flex items-center justify-center">
+        <i data-lucide="award" class="w-6 h-6"></i>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">5-Star Reviews</span>
+        <div class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{ five_star_count }}</div>
+        <span class="text-xs text-emerald-600 font-medium">Top Satisfaction</span>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-500 flex items-center justify-center">
+        <i data-lucide="smile" class="w-6 h-6"></i>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">4-Star Reviews</span>
+        <div class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{ four_star_count }}</div>
+        <span class="text-xs text-indigo-600 font-medium">Strong Endorsement</span>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-500 flex items-center justify-center">
+        <i data-lucide="thumbs-up" class="w-6 h-6"></i>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Feedback</span>
+        <div class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{ feedback_list | length }}</div>
+        <span class="text-xs text-slate-400 font-medium">Across all courses</span>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+        <i data-lucide="message-square" class="w-6 h-6"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800">
+    <div class="flex items-center gap-3 overflow-x-auto w-full md:w-auto">
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rating:</span>
+        <button type="button" @click="ratingFilter = 'all'" :class="ratingFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-2.5 py-1 text-xs font-medium rounded-lg">All</button>
+        <button type="button" @click="ratingFilter = '5'" :class="ratingFilter === '5' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-2.5 py-1 text-xs font-medium rounded-lg">5 ★</button>
+        <button type="button" @click="ratingFilter = '4'" :class="ratingFilter === '4' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-2.5 py-1 text-xs font-medium rounded-lg">4 ★</button>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Course:</span>
+        <select x-model="courseFilter" class="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs px-2.5 py-1 text-slate-800 dark:text-slate-200">
+          <option value="all">All Tracks</option>
+          {% for c in courses %}
+            <option value="{{ c.id }}">{{ c.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="w-full md:w-72 relative">
+      <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+      <input type="text" x-model="search" placeholder="Search comments or learner..." class="w-full pl-9 pr-3.5 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600">
+    </div>
+  </div>
+
+  <!-- REVIEWS FEED GRID -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {% for fb in feedback_list %}
+      <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 flex flex-col justify-between hover:shadow-md transition-shadow"
+           x-show="(ratingFilter === 'all' || ratingFilter == '{{ fb.rating }}') && (courseFilter === 'all' || courseFilter == '{{ fb.course_id }}') && (search === '' || '{{ fb.learner_name | lower }}'.includes(search.toLowerCase()) || '{{ fb.comments | lower }}'.includes(search.toLowerCase()))">
+        <div>
+          <!-- Review Header -->
+          <div class="flex items-start justify-between gap-3 mb-3">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center text-xs ring-1 ring-indigo-200 dark:ring-indigo-800 shrink-0">
+                {{ fb.learner_name | initials }}
+              </span>
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white">{{ fb.learner_name }}</h4>
+                <p class="text-[10px] text-slate-400">{{ fb.headline or 'Learner' }}</p>
+              </div>
+            </div>
+            <div class="flex items-center text-amber-400">
+              {% for i in range(fb.rating) %}
+                <i data-lucide="star" class="w-3.5 h-3.5 fill-current"></i>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Title & Comment -->
+          <h5 class="text-sm font-semibold text-slate-900 dark:text-white mb-1.5">{{ fb.review_title }}</h5>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
+            "{{ fb.comments }}"
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+          <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ fb.course_title }}</span>
+          <span>{{ fb.created_at.strftime('%b %d, %Y') if fb.created_at else '-' }}</span>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

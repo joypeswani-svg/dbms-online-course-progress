@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Quiz Attempts — Instructor Studio{% endblock %}
+{% block current_page %}Quiz Attempts{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ search: '' }">
+  <!-- HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider font-mono">
+          Assessments
+        </span>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Student Quiz Attempts</h1>
+      </div>
+      <p class="text-xs text-slate-400 mt-1">Quiz attempts and scoring records across courses taught by {{ instructor.name }}.</p>
+    </div>
+    <div class="w-full sm:w-64 relative">
+      <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+      <input type="text" x-model="search" placeholder="Search learner or quiz..." class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-zinc-400">
+    </div>
+  </div>
+
+  <!-- ATTEMPTS TABLE -->
+  <div class="bg-slate-900 rounded-xl shadow-xs border border-slate-800 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse table-sticky-header text-xs">
+        <thead>
+          <tr class="bg-slate-950/70 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+            <th class="py-3 px-5">ID</th>
+            <th class="py-3 px-5">Learner</th>
+            <th class="py-3 px-5">Course Track</th>
+            <th class="py-3 px-5">Quiz Title</th>
+            <th class="py-3 px-5">Attempt #</th>
+            <th class="py-3 px-5">Score</th>
+            <th class="py-3 px-5">Status</th>
+            <th class="py-3 px-5 text-right">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/80">
+          {% for a in attempts %}
+            <tr class="hover:bg-slate-850/60 transition-colors"
+                x-show="search === '' || '{{ a.learner_name | lower }}'.includes(search.toLowerCase()) || '{{ a.quiz_title | lower }}'.includes(search.toLowerCase()) || '{{ a.course_title | lower }}'.includes(search.toLowerCase())">
+              <td class="py-3 px-5 font-mono text-slate-400">#{{ a.id }}</td>
+              <td class="py-3 px-5 font-medium text-white">{{ a.learner_name }}</td>
+              <td class="py-3 px-5 text-slate-200">{{ a.course_title }}</td>
+              <td class="py-3 px-5 font-semibold text-white">{{ a.quiz_title }}</td>
+              <td class="py-3 px-5 font-mono text-slate-300">#{{ a.attempt_num }}</td>
+              <td class="py-3 px-5 font-mono font-bold {{ 'text-emerald-400' if a.score >= 70 else 'text-red-400' }}">
+                {{ a.score }} pts
+              </td>
+              <td class="py-3 px-5">
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded {{ 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' if a.passed else 'bg-red-500/10 text-red-400 border border-red-500/20' }}">
+                  {{ 'Passed' if a.passed else 'Failed' }}
+                </span>
+              </td>
+              <td class="py-3 px-5 text-right font-mono text-slate-400">
+                {{ a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '-' }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

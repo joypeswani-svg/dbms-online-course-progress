@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Admin Dashboard — LearnPulse{% endblock %}
+{% block current_page %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- WELCOME HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">System Executive Dashboard</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Real-time learning pipeline metrics, student retention, and assessment health.</p>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <a href="/admin/reports" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-750 shadow-sm transition-colors">
+        <i data-lucide="file-text" class="w-4 h-4 text-slate-500"></i>
+        <span>Full Audit Reports</span>
+      </a>
+      <a href="/admin/courses" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-colors">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        <span>New Course</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- 6 KPI METRIC CARDS -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+    {{ ui.kpi_card('Total Users', kpis.total_users, '+4 this month', 'up', 'users', 'indigo') }}
+    {{ ui.kpi_card('Published Courses', kpis.total_courses, '8 active tracks', 'up', 'book-open', 'purple') }}
+    {{ ui.kpi_card('Total Enrolments', kpis.total_enrolments, '35 registered', 'up', 'user-check', 'sky') }}
+    {{ ui.kpi_card('Completion Rate', kpis.completion_rate ~ '%', '11 certified', 'up', 'check-circle-2', 'emerald') }}
+    {{ ui.kpi_card('Certificates Issued', kpis.total_certificates, 'Verified credentials', 'up', 'award', 'amber') }}
+    {{ ui.kpi_card('Dropout / At Risk', kpis.total_dropouts, '7 flagged cases', 'down', 'alert-octagon', 'rose') }}
+  </div>
+
+  <!-- 4 CHARTS GRID -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- CHART 1: Enrolments Per Course (Bar) -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Enrolments per Course</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Total student admissions distributed across tracks</p>
+        </div>
+        <span class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+          <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+        </span>
+      </div>
+      <div class="relative h-64 w-full">
+        <canvas id="chartEnrolmentsPerCourse"></canvas>
+      </div>
+    </div>
+
+    <!-- CHART 2: Completion Rate Breakdown (Doughnut) -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Enrolment Status Breakdown</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Active vs Completed vs Dropped proportions</p>
+        </div>
+        <span class="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+          <i data-lucide="pie-chart" class="w-4 h-4"></i>
+        </span>
+      </div>
+      <div class="relative h-64 w-full flex items-center justify-center">
+        <canvas id="chartCompletionBreakdown"></canvas>
+      </div>
+    </div>
+
+    <!-- CHART 3: Enrolments Over Time (Line) -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Enrolment Growth Trajectory</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Monthly new admissions across 2025–2026</p>
+        </div>
+        <span class="p-2 rounded-lg bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400">
+          <i data-lucide="trending-up" class="w-4 h-4"></i>
+        </span>
+      </div>
+      <div class="relative h-64 w-full">
+        <canvas id="chartEnrolmentsTimeline"></canvas>
+      </div>
+    </div>
+
+    <!-- CHART 4: Avg Quiz Score per Course (Horizontal Bar) -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Average Assessment Scores</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Student quiz score performance out of 100 marks</p>
+        </div>
+        <span class="p-2 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+          <i data-lucide="award" class="w-4 h-4"></i>
+        </span>
+      </div>
+      <div class="relative h-64 w-full">
+        <canvas id="chartQuizScores"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM THREE-COLUMN SECTION: RECENT ENROLMENTS, RECENT CERTIFICATES, TOP LEARNERS -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- RECENT ENROLMENTS (SPAN 2 COLS) -->
+    <div class="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6">
+      <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 class="text-base font-semibold text-slate-900 dark:text-white">Recent Enrolments & Progress</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Live learner tracking with database-calculated progress</p>
+        </div>
+        <a href="/admin/enrolments" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">View All →</a>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+              <th class="py-2.5">Learner</th>
+              <th class="py-2.5">Course</th>
+              <th class="py-2.5">Status</th>
+              <th class="py-2.5">Progress</th>
+              <th class="py-2.5 text-right">Enrolled</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+            {% for enr in recent_enrolments %}
+              <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                <td class="py-3 font-medium text-slate-900 dark:text-white">
+                  {{ enr.learner_name }}
+                </td>
+                <td class="py-3 text-slate-600 dark:text-slate-300 max-w-[200px] truncate" title="{{ enr.course_title }}">
+                  {{ enr.course_title }}
+                </td>
+                <td class="py-3">
+                  {{ ui.status_badge(enr.status) }}
+                </td>
+                <td class="py-3 min-w-[120px]">
+                  {{ ui.progress_bar(enr.progress) }}
+                </td>
+                <td class="py-3 text-right text-slate-400">
+                  {{ enr.enrolled_at.strftime('%b %d, %Y') if enr.enrolled_at else '-' }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RECENT CERTIFICATES & TOP PERFORMERS -->
+    <div class="space-y-6">
+      <!-- RECENT CERTIFICATES -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Recent Certificates</h3>
+          <a href="/admin/certificates" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">View All</a>
+        </div>
+        <div class="space-y-3">
+          {% for cert in recent_certificates %}
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="award" class="w-4 h-4"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-xs font-semibold text-slate-900 dark:text-white truncate">{{ cert.learner_name }}</p>
+                  <p class="text-[10px] text-slate-400 font-mono">{{ cert.certificate_code }}</p>
+                </div>
+              </div>
+              <a href="/certificates/view/{{ cert.id }}" target="_blank" class="p-1 text-slate-400 hover:text-indigo-600 transition-colors" title="Print/View Certificate">
+                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- TOP LEARNERS -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Top Completers</h3>
+          <span class="text-[11px] text-slate-400">By Completed Tracks</span>
+        </div>
+        <div class="space-y-2.5">
+          {% for t in top_learners %}
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center">{{ loop.index }}</span>
+                <span class="font-medium text-slate-800 dark:text-slate-200">{{ t.name }}</span>
+              </div>
+              <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ t.completed_count }} Completed</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INJECT REAL CHART DATA SCRIPTS -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#94A3B8' : '#64748B';
+    const gridColor = isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(226, 232, 240, 0.6)';
+
+    // Chart 1: Enrolments per Course
+    const courseLabels = {{ chart_courses.labels | tojson }};
+    const courseCounts = {{ chart_courses.counts | tojson }};
+    new Chart(document.getElementById('chartEnrolmentsPerCourse'), {
+      type: 'bar',
+      data: {
+        labels: courseLabels,
+        datasets: [{
+          label: 'Enrolments',
+          data: courseCounts,
+          backgroundColor: isDark ? '#FFFFFF' : '#18181B',
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: textColor, font: { size: 10 }, maxRotation: 20 }
+          },
+          y: {
+            grid: { color: gridColor },
+            ticks: { color: textColor, font: { size: 10 }, stepSize: 1 },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    // Chart 2: Completion Rate Breakdown
+    new Chart(document.getElementById('chartCompletionBreakdown'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Completed', 'Active In-Progress', 'Dropped'],
+        datasets: [{
+          data: [{{ kpis.completed_count }}, {{ kpis.active_count }}, {{ kpis.dropped_count }}],
+          backgroundColor: ['#10B981', '#A1A1AA', '#F43F5E'],
+          borderWidth: 2,
+          borderColor: isDark ? '#0C0C0E' : '#FFFFFF'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: textColor, font: { size: 11 }, padding: 16 }
+          }
+        },
+        cutout: '70%'
+      }
+    });
+
+    // Chart 3: Enrolments Over Time
+    const timelineLabels = {{ chart_timeline.labels | tojson }};
+    const timelineCounts = {{ chart_timeline.counts | tojson }};
+    new Chart(document.getElementById('chartEnrolmentsTimeline'), {
+      type: 'line',
+      data: {
+        labels: timelineLabels,
+        datasets: [{
+          label: 'New Enrolments',
+          data: timelineCounts,
+          borderColor: '#0284C7',
+          backgroundColor: 'rgba(2, 132, 199, 0.1)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4,
+          pointBackgroundColor: '#0284C7'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } },
+          y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 }, stepSize: 1 }, beginAtZero: true }
+        }
+      }
+    });
+
+    // Chart 4: Average Quiz Score
+    const quizLabels = {{ chart_quizzes.labels | tojson }};
+    const quizScores = {{ chart_quizzes.scores | tojson }};
+    new Chart(document.getElementById('chartQuizScores'), {
+      type: 'bar',
+      data: {
+        labels: quizLabels,
+        datasets: [{
+          label: 'Avg Score (Marks)',
+          data: quizScores,
+          backgroundColor: '#8B5CF6',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } }, max: 100, beginAtZero: true },
+          y: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

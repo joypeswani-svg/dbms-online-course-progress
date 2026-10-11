@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}{{ view_name | replace('vw_', '') | replace('_', ' ') | title }} View — LearnPulse{% endblock %}
+
+{% block breadcrumbs %}
+<li><span class="text-slate-300 dark:text-slate-700">/</span></li>
+<li><span class="text-slate-500">Views</span></li>
+<li><span class="text-slate-300 dark:text-slate-700">/</span></li>
+<li class="text-slate-900 dark:text-white font-semibold">{{ view_name }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- TOP HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200/80 dark:border-indigo-800 shadow-xs">
+        <i data-lucide="table-2" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-2xl font-bold tracking-tight text-white">
+            {{ view_name | replace('vw_', '') | replace('_', ' ') | title }}
+          </h1>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-zinc-800 text-zinc-200 border border-zinc-700">
+            VIEW &bull; Read-Only
+          </span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5 font-mono">
+          {{ view_name }} &bull; {{ total_rows }} records computed
+        </p>
+      </div>
+    </div>
+
+    <!-- EXPORT CSV BUTTON -->
+    <a href="/admin/views/{{ view_name }}/export" 
+       class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-zinc-950 bg-white hover:bg-zinc-200 rounded-xl shadow-sm transition-colors">
+      <i data-lucide="download" class="w-4 h-4"></i>
+      <span>Export CSV</span>
+    </a>
+  </div>
+
+  <!-- SEARCH & FILTER BAR WITH SORT BY AND PER-PAGE OPTIONS -->
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900 p-3.5 rounded-xl border border-slate-800 shadow-xs">
+    <form method="GET" action="/admin/views/{{ view_name }}" class="flex-1 w-full flex flex-wrap items-center gap-2.5">
+      <div class="relative flex-1 min-w-[200px]">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+        <input type="text" 
+               name="q" 
+               value="{{ search }}" 
+               placeholder="Search view records..." 
+               class="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+      </div>
+
+      <!-- Sort By Controls -->
+      <div class="flex items-center gap-1.5">
+        <label class="text-[11px] font-semibold text-slate-400 whitespace-nowrap flex items-center gap-1">
+          <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-slate-500"></i>
+          <span>Sort by:</span>
+        </label>
+        <select name="sort" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          {% for col in schema.columns %}
+            <option value="{{ col.name }}" {% if sort_col == col.name %}selected{% endif %}>{{ col.name | replace('_', ' ') }}</option>
+          {% endfor %}
+        </select>
+        <select name="dir" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          <option value="asc" {% if sort_dir == 'asc' %}selected{% endif %}>Asc (A-Z / 1-9)</option>
+          <option value="desc" {% if sort_dir == 'desc' %}selected{% endif %}>Desc (Z-A / 9-1)</option>
+        </select>
+      </div>
+
+      <!-- Per-Page Controls (Show all records by default!) -->
+      <div class="flex items-center gap-1.5">
+        <label class="text-[11px] font-semibold text-slate-400 whitespace-nowrap flex items-center gap-1">
+          <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-500"></i>
+          <span>Show:</span>
+        </label>
+        <select name="per_page" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          <option value="all" {% if per_page_arg == 'all' or per_page >= 1000 %}selected{% endif %}>All ({{ total_rows }})</option>
+          <option value="15" {% if per_page_arg == '15' and per_page < 1000 %}selected{% endif %}>15 rows</option>
+          <option value="50" {% if per_page_arg == '50' and per_page < 1000 %}selected{% endif %}>50 rows</option>
+          <option value="100" {% if per_page_arg == '100' and per_page < 1000 %}selected{% endif %}>100 rows</option>
+        </select>
+      </div>
+
+      <button type="submit" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white text-zinc-950 hover:bg-zinc-200 transition-colors shadow-sm">
+        Apply
+      </button>
+      {% if search or sort_col or sort_dir != 'asc' or (per_page_arg and per_page_arg != 'all') %}
+        <a href="/admin/views/{{ view_name }}" class="px-2.5 py-1.5 text-xs font-semibold text-rose-400 hover:text-rose-300">
+          Reset
+        </a>
+      {% endif %}
+    </form>
+
+    <div class="flex items-center gap-2 text-xs text-slate-400 whitespace-nowrap">
+      {% if rows | length == total_rows %}
+        <span>Showing all <strong class="text-white">{{ total_rows }}</strong> records</span>
+      {% else %}
+        <span>Showing <strong class="text-white">{{ rows | length }}</strong> of <strong class="text-white">{{ total_rows }}</strong> records</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- DATA GRID TABLE CARD -->
+  <div class="bg-slate-900 rounded-xl border border-slate-800 shadow-xs overflow-hidden">
+    <div class="overflow-x-auto max-h-[620px] custom-scrollbar">
+      <table class="w-full text-left border-collapse text-xs table-sticky-header">
+        <thead>
+          <tr class="bg-slate-800/90 border-b border-slate-800 text-slate-400 uppercase tracking-wider font-semibold">
+            <th class="px-4 py-3 text-center w-14">#</th>
+            {% for col in schema.columns %}
+              <th class="px-4 py-3 whitespace-nowrap">
+                <a href="/admin/views/{{ view_name }}?sort={{ col.name }}&dir={{ 'desc' if sort_col == col.name and sort_dir == 'asc' else 'asc' }}&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}"
+                   class="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+                  <span>{{ col.name | replace('_', ' ') }}</span>
+                  {% if sort_col == col.name %}
+                    <i data-lucide="{{ 'chevron-up' if sort_dir == 'asc' else 'chevron-down' }}" class="w-3.5 h-3.5 text-white"></i>
+                  {% else %}
+                    <i data-lucide="chevrons-up-down" class="w-3 h-3 text-slate-500 opacity-60"></i>
+                  {% endif %}
+                </a>
+              </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60 font-normal">
+          {% for r in rows %}
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <td class="px-4 py-3 text-center text-slate-400 font-mono text-[11px]">
+                {{ loop.index + ((page - 1) * per_page) }}
+              </td>
+
+              {% for col in schema.columns %}
+                <td class="px-4 py-3 whitespace-nowrap text-slate-300 max-w-xs truncate">
+                  {% set val = r[col.name] %}
+                  {% if val is none %}
+                    <span class="text-slate-600 italic">NULL</span>
+                  {% elif 'rate' in col.name or 'pct' in col.name or 'progress' in col.name %}
+                    <span class="font-bold text-white">{{ val }}%</span>
+                  {% elif 'rating' in col.name %}
+                    <span class="font-bold text-amber-400">★ {{ val }}</span>
+                  {% else %}
+                    <span title="{{ val }}">{{ val }}</span>
+                  {% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="{{ (schema.columns | length) + 1 }}" class="py-12 text-center text-slate-400">
+                <div class="flex flex-col items-center justify-center gap-2">
+                  <i data-lucide="inbox" class="w-8 h-8 opacity-40"></i>
+                  <p class="text-sm font-medium">No records in this view</p>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="px-4 py-3 border-t border-slate-800 bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+      <div>
+        {% if total_pages <= 1 or per_page >= 1000 %}
+          Showing all <span class="font-bold text-white">{{ total_rows }}</span> records
+        {% else %}
+          Showing page <span class="font-bold text-white">{{ page }}</span> of <span class="font-bold text-white">{{ total_pages }}</span> ({{ total_rows }} records)
+        {% endif %}
+      </div>
+      {% if total_pages > 1 and per_page < 1000 %}
+        <div class="flex items-center gap-1.5">
+          {% if page > 1 %}
+            <a href="/admin/views/{{ view_name }}?page=1&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}&sort={{ sort_col }}&dir={{ sort_dir }}" class="px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300">First</a>
+            <a href="/admin/views/{{ view_name }}?page={{ page - 1 }}&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}&sort={{ sort_col }}&dir={{ sort_dir }}" class="px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300">Prev</a>
+          {% endif %}
+
+          <span class="px-3 py-1 font-bold bg-white text-zinc-950 rounded-lg shadow-sm">
+            {{ page }}
+          </span>
+
+          {% if page < total_pages %}
+            <a href="/admin/views/{{ view_name }}?page={{ page + 1 }}&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}&sort={{ sort_col }}&dir={{ sort_dir }}" class="px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300">Next</a>
+            <a href="/admin/views/{{ view_name }}?page={{ total_pages }}&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}&sort={{ sort_col }}&dir={{ sort_dir }}" class="px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300">Last</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

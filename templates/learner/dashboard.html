@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}My Learning Dashboard — LearnPulse{% endblock %}
+{% block current_page %}My Learning{% endblock %}
+
+{% block content %}
+<div class="space-y-8" x-data="{ catalogSearch: '', categoryFilter: 'all' }">
+  <!-- WELCOME HEADER -->
+  <div class="bg-gradient-to-r from-indigo-900 to-indigo-700 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
+    <div class="relative z-10 max-w-xl space-y-2">
+      <span class="text-xs uppercase tracking-wider font-semibold text-indigo-200">Welcome Back</span>
+      <h1 class="text-3xl font-extrabold tracking-tight">Accelerate your technical mastery, {{ session.get('user_name', 'Student') }}.</h1>
+      <p class="text-xs text-indigo-100 leading-relaxed pt-1">
+        Resume your active engineering tracks, pass module assessments, and earn verified credentials.
+      </p>
+    </div>
+    <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+      <i data-lucide="graduation-cap" class="w-72 h-72"></i>
+    </div>
+  </div>
+
+  <!-- SECTION 1: MY ACTIVE ENROLMENTS -->
+  <div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">My Active Courses</h2>
+        <p class="text-xs text-slate-500">Pick up right where you left off</p>
+      </div>
+    </div>
+
+    {% if not my_enrolments %}
+      {{ ui.empty_state('book-open', 'No courses in progress', 'Browse the catalog below and enroll in your first track to start learning.') }}
+    {% else %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for enr in my_enrolments %}
+          <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-5 flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                {{ ui.status_badge(enr.status) }}
+                <span class="text-xs font-semibold text-indigo-600">{{ enr.category }}</span>
+              </div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{{ enr.title }}</h3>
+              <p class="text-xs text-slate-400 mt-1">Instructor: {{ enr.instructor_name }}</p>
+
+              <!-- Progress bar -->
+              <div class="mt-4 space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-slate-500 text-[11px]">Progress</span>
+                  <span class="font-bold text-slate-900 dark:text-white tabular-nums">{{ enr.progress }}%</span>
+                </div>
+                {{ ui.progress_bar(enr.progress, show_label=false) }}
+              </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span class="text-[11px] text-slate-400 font-medium">
+                {{ enr.completed_lessons }} of {{ enr.total_lessons }} Lessons
+              </span>
+              <a href="/learner/course/{{ enr.course_id }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-colors">
+                <span>Continue</span>
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- SECTION 2: EXPLORE COURSE CATALOG -->
+  <div class="space-y-4 pt-4">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Explore Course Catalog</h2>
+        <p class="text-xs text-slate-500">Discover production-grade engineering curricula</p>
+      </div>
+      <div class="w-full sm:w-72 relative">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+        <input type="text" x-model="catalogSearch" placeholder="Search available tracks..." class="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {% for c in available_courses %}
+        <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow group"
+             x-show="catalogSearch === '' || '{{ c.title | lower }}'.includes(catalogSearch.toLowerCase()) || '{{ c.category | lower }}'.includes(catalogSearch.toLowerCase())">
+          <div>
+            <div class="relative h-40 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+              <img src="{{ c.thumbnail_url or 'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=600' }}" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+              <div class="absolute top-3 left-3">
+                {{ ui.status_badge(c.difficulty) }}
+              </div>
+            </div>
+
+            <div class="p-5">
+              <span class="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider block mb-1">{{ c.category }}</span>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white line-clamp-2">{{ c.title }}</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">{{ c.description }}</p>
+            </div>
+          </div>
+
+          <div class="p-5 pt-0 flex items-center justify-between">
+            <span class="text-xs text-slate-400">By {{ c.instructor_name }}</span>
+            {% if c.is_enrolled %}
+              <a href="/learner/course/{{ c.id }}" class="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg hover:bg-indigo-100 transition-colors">
+                Enrolled ✓
+              </a>
+            {% else %}
+              <form action="/learner/enroll/{{ c.id }}" method="POST">
+                <button type="submit" class="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-colors flex items-center gap-1">
+                  <span>Enroll Free</span>
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

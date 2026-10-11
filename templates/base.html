@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100 antialiased dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}LearnPulse{% endblock %} — Online Course Progress SaaS</title>
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            // Replaced blue/indigo with sleek monochrome black/white/zinc
+            indigo: {
+              50: '#f4f4f5',
+              100: '#e4e4e7',
+              200: '#d4d4d8',
+              300: '#a1a1aa',
+              400: '#a1a1aa',
+              500: '#71717a',
+              600: '#18181b', // Primary dark
+              700: '#09090b',
+              800: '#000000',
+              900: '#000000',
+              950: '#000000',
+            },
+            // Pure multi-level black theme canvas & elevated surfaces
+            slate: {
+              50: '#fafafa',
+              100: '#f4f4f5',
+              200: '#e4e4e7',
+              300: '#d4d4d8',
+              400: '#a1a1aa',
+              500: '#71717a',
+              600: '#52525b',
+              700: '#2e2e3d', // Level 4 border
+              750: '#262633', // Level 3 border
+              800: '#181820', // Level 3 bg (toolbar, table header)
+              850: '#14141a', // Level 2.5 bg
+              900: '#131318', // Level 2 bg (card, panel)
+              950: '#0d0d11', // Level 1 bg (sidebar, topbar)
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+
+  <!-- Custom CSS & JS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</head>
+<body class="h-full overflow-hidden flex bg-slate-50 dark:bg-slate-950 font-sans" 
+      x-data="{ 
+        sidebarOpen: false, 
+        personaDropdownOpen: false,
+        theme: $store.theme
+      }">
+
+  <!-- TOAST NOTIFICATIONS (FIXED TOP-RIGHT) -->
+  <div class="fixed top-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none" x-cloak>
+    <template x-for="t in $store.toasts.items" :key="t.id">
+      <div 
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 transform translate-y-2 translate-x-4"
+        x-transition:enter-end="opacity-100 transform translate-y-0 translate-x-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 transform translate-x-0"
+        x-transition:leave-end="opacity-0 transform translate-x-4"
+        class="pointer-events-auto p-4 rounded-xl shadow-lg border flex items-start gap-3 backdrop-blur-md transition-all duration-200"
+        :class="{
+          'bg-white/95 dark:bg-slate-900/95 border-emerald-500/30 text-slate-800 dark:text-slate-100': t.type === 'success',
+          'bg-white/95 dark:bg-slate-900/95 border-rose-500/30 text-slate-800 dark:text-slate-100': t.type === 'error' || t.type === 'danger',
+          'bg-white/95 dark:bg-slate-900/95 border-amber-500/30 text-slate-800 dark:text-slate-100': t.type === 'warning',
+          'bg-white/95 dark:bg-slate-900/95 border-indigo-500/30 text-slate-800 dark:text-slate-100': t.type === 'info'
+        }">
+        <div class="mt-0.5">
+          <template x-if="t.type === 'success'">
+            <div class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
+            </div>
+          </template>
+          <template x-if="t.type === 'error' || t.type === 'danger'">
+            <div class="w-6 h-6 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+            </div>
+          </template>
+          <template x-if="t.type === 'warning'">
+            <div class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+            </div>
+          </template>
+          <template x-if="t.type === 'info'">
+            <div class="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <i data-lucide="info" class="w-3.5 h-3.5"></i>
+            </div>
+          </template>
+        </div>
+        <div class="flex-1">
+          <p x-show="t.title" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5" x-text="t.title"></p>
+          <p class="text-sm font-medium text-slate-900 dark:text-white" x-text="t.message"></p>
+        </div>
+        <button type="button" @click="$store.toasts.remove(t.id)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </template>
+  </div>
+
+  <!-- ADMIN PASSWORD UNLOCK MODAL (PHASE 3) -->
+  <div x-cloak x-show="$store.adminModal.isOpen" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="admin-modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <!-- Backdrop -->
+      <div x-show="$store.adminModal.isOpen" 
+           x-transition:enter="ease-out duration-300" 
+           x-transition:enter-start="opacity-0" 
+           x-transition:enter-end="opacity-100" 
+           x-transition:leave="ease-in duration-200" 
+           x-transition:leave-start="opacity-100" 
+           x-transition:leave-end="opacity-0" 
+           class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity" 
+           @click="$store.adminModal.close()"></div>
+
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <!-- Modal Card -->
+      <div x-show="$store.adminModal.isOpen" 
+           x-transition:enter="ease-out duration-300" 
+           x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+           x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+           x-transition:leave="ease-in duration-200" 
+           x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+           x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+           :class="{ 'animate-shake': $store.adminModal.shaking }"
+           class="inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-slate-200 dark:border-slate-800 p-6">
+        
+        <div class="flex items-center gap-3.5 mb-4">
+          <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white" id="admin-modal-title">Unlock Admin Mode</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Enter system administrator key to access tables & console</p>
+          </div>
+        </div>
+
+        <form @submit.prevent="$store.adminModal.submit()" class="space-y-4">
+          <div>
+            <label for="admin-password-input" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Admin Password
+            </label>
+            <div class="relative">
+              <input 
+                id="admin-password-input"
+                :type="$store.adminModal.showPassword ? 'text' : 'password'" 
+                x-model="$store.adminModal.password" 
+                :disabled="$store.adminModal.locked || $store.adminModal.loading"
+                placeholder="Enter password..."
+                class="w-full pl-3.5 pr-10 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 disabled:opacity-50">
+              
+              <button 
+                type="button" 
+                @click="$store.adminModal.toggleShowPassword()" 
+                class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none">
+                <template x-if="!$store.adminModal.showPassword">
+                  <i data-lucide="eye" class="w-4 h-4"></i>
+                </template>
+                <template x-if="$store.adminModal.showPassword">
+                  <i data-lucide="eye-off" class="w-4 h-4"></i>
+                </template>
+              </button>
+            </div>
+
+            <!-- Error message inline under field -->
+            <p x-show="$store.adminModal.errorMessage" 
+               x-text="$store.adminModal.errorMessage" 
+               class="text-xs font-medium text-rose-500 mt-1.5 flex items-center gap-1"></p>
+
+            <!-- Lockout countdown timer display -->
+            <div x-show="$store.adminModal.locked" class="mt-2 p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 flex items-center gap-2 text-xs font-semibold text-rose-600 dark:text-rose-400">
+              <i data-lucide="clock" class="w-4 h-4 flex-shrink-0 animate-spin"></i>
+              <span>Too many failed attempts. Locked for <strong x-text="$store.adminModal.lockoutSeconds"></strong>s</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <button 
+              type="button" 
+              @click="$store.adminModal.close()" 
+              class="px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              :disabled="$store.adminModal.locked || $store.adminModal.loading"
+              class="px-4 py-2 text-xs font-semibold rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5 shadow-sm">
+              <template x-if="$store.adminModal.loading">
+                <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+              </template>
+              <span>Unlock Admin</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSTRUCTOR MODE UNLOCK MODAL -->
+  <div x-cloak x-show="$store.instructorModal.isOpen" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="instructor-modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <div x-show="$store.instructorModal.isOpen" 
+           x-transition:enter="ease-out duration-300" 
+           x-transition:enter-start="opacity-0" 
+           x-transition:enter-end="opacity-100" 
+           x-transition:leave="ease-in duration-200" 
+           x-transition:leave-start="opacity-100" 
+           x-transition:leave-end="opacity-0" 
+           class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" 
+           @click="$store.instructorModal.close()"></div>
+
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <div x-show="$store.instructorModal.isOpen" 
+           x-transition:enter="ease-out duration-300" 
+           x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+           x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+           x-transition:leave="ease-in duration-200" 
+           x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+           x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+           :class="{ 'animate-shake': $store.instructorModal.shaking }"
+           class="inline-block align-bottom bg-slate-900 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-slate-800 p-6">
+        
+        <div class="flex items-center gap-3.5 mb-4">
+          <div class="w-10 h-10 rounded-xl bg-slate-800 text-emerald-400 flex items-center justify-center border border-slate-700">
+            <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white" id="instructor-modal-title">Enter Instructor Studio</h3>
+            <p class="text-xs text-slate-400">Manage modules, lessons & quizzes for your course tracks</p>
+          </div>
+        </div>
+
+        <form @submit.prevent="$store.instructorModal.submit()" class="space-y-4">
+          <!-- Select which instructor profile to unlock -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">
+              Select Instructor Profile
+            </label>
+            <select x-model="$store.instructorModal.instructorId" 
+                    class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+              {% for inst in all_instructors %}
+                <option value="{{ inst.id }}">{{ inst.name }} ({{ inst.id }}) &mdash; {{ inst.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="instructor-password-input" class="block text-xs font-semibold text-slate-300 mb-1.5">
+              Instructor Studio Password
+            </label>
+            <div class="relative">
+              <input 
+                id="instructor-password-input"
+                :type="$store.instructorModal.showPassword ? 'text' : 'password'" 
+                x-model="$store.instructorModal.password" 
+                :disabled="$store.instructorModal.locked || $store.instructorModal.loading"
+                placeholder="Enter password (default: instructor16)..."
+                class="w-full pl-3.5 pr-10 py-2.5 text-sm rounded-xl border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400 disabled:opacity-50">
+              
+              <button 
+                type="button" 
+                @click="$store.instructorModal.toggleShowPassword()" 
+                class="absolute right-3 top-3 text-slate-400 hover:text-white focus:outline-none">
+                <template x-if="!$store.instructorModal.showPassword">
+                  <i data-lucide="eye" class="w-4 h-4"></i>
+                </template>
+                <template x-if="$store.instructorModal.showPassword">
+                  <i data-lucide="eye-off" class="w-4 h-4"></i>
+                </template>
+              </button>
+            </div>
+
+            <p x-show="$store.instructorModal.errorMessage" 
+               x-text="$store.instructorModal.errorMessage" 
+               class="text-xs font-medium text-rose-400 mt-1.5 flex items-center gap-1"></p>
+
+            <div x-show="$store.instructorModal.locked" class="mt-2 p-2.5 rounded-lg bg-rose-950/40 border border-rose-900 flex items-center gap-2 text-xs font-semibold text-rose-400">
+              <i data-lucide="clock" class="w-4 h-4 flex-shrink-0 animate-spin"></i>
+              <span>Locked for <strong x-text="$store.instructorModal.lockoutSeconds"></strong>s</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+            <button 
+              type="button" 
+              @click="$store.instructorModal.close()" 
+              class="px-4 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:bg-slate-800 transition-colors">
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              :disabled="$store.instructorModal.locked || $store.instructorModal.loading"
+              class="px-4 py-2 text-xs font-bold rounded-lg text-zinc-950 bg-white hover:bg-zinc-200 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5 shadow-sm">
+              <template x-if="$store.instructorModal.loading">
+                <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+              </template>
+              <span>Unlock Studio</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  <div x-cloak x-show="$store.deleteModal.isOpen" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div x-show="$store.deleteModal.isOpen" 
+           x-transition:enter="ease-out duration-300" 
+           x-transition:enter-start="opacity-0" 
+           x-transition:enter-end="opacity-100" 
+           x-transition:leave="ease-in duration-200" 
+           x-transition:leave-start="opacity-100" 
+           x-transition:leave-end="opacity-0" 
+           class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+           @click="$store.deleteModal.close()"></div>
+
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <div x-show="$store.deleteModal.isOpen" 
+           x-transition:enter="ease-out duration-300" 
+           x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+           x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+           x-transition:leave="ease-in duration-200" 
+           x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+           x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+           class="inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-slate-200 dark:border-slate-800 p-6">
+        <div class="sm:flex sm:items-start">
+          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 sm:mx-0 sm:h-10 sm:w-10">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          </div>
+          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+            <h3 class="text-lg leading-6 font-semibold text-slate-900 dark:text-white" x-text="$store.deleteModal.title"></h3>
+            <div class="mt-2">
+              <p class="text-sm text-slate-500 dark:text-slate-400" x-text="$store.deleteModal.message"></p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-6 sm:flex sm:flex-row-reverse gap-3">
+          <form :action="$store.deleteModal.actionUrl" method="POST">
+            <button type="submit" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-rose-600 text-sm font-medium text-white hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors">
+              <span x-text="$store.deleteModal.confirmText"></span>
+            </button>
+          </form>
+          <button type="button" @click="$store.deleteModal.close()" class="mt-3 w-full inline-flex justify-center rounded-lg border border-slate-300 dark:border-slate-700 shadow-sm px-4 py-2 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 sm:mt-0 transition-colors">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIXED LEFT SIDEBAR (DESKTOP) -->
+  <aside class="hidden lg:flex lg:flex-shrink-0">
+    <div class="flex flex-col w-64 border-r border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900">
+      <!-- BRAND HEADER -->
+      <div class="flex items-center justify-between h-16 px-6 border-b border-slate-100 dark:border-slate-800/80">
+        <a href="/" class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-zinc-800 to-zinc-950 border border-zinc-700/60 text-white flex items-center justify-center shadow-md">
+            <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-base font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+              LearnPulse
+              {% if is_admin %}
+                <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">ADMIN</span>
+              {% else %}
+                <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">SaaS</span>
+              {% endif %}
+            </span>
+          </div>
+        </a>
+      </div>
+
+      <!-- SIDEBAR NAVIGATION -->
+      <nav class="flex-1 px-4 py-4 space-y-5 overflow-y-auto">
+        {% if is_admin %}
+          <!-- ==================== ADMIN MODE SIDEBAR ==================== -->
+          <!-- 1. OVERVIEW -->
+          <div>
+            <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Overview</p>
+            <div class="space-y-0.5">
+              <a href="/admin/dashboard" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'admin_dashboard' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                <span>Dashboard</span>
+              </a>
+              <a href="/admin/reports" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'admin_reports' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i>
+                <span>Reports & Analytics</span>
+              </a>
+              <a href="/admin/sql-console" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'admin_sql' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+                <span>SQL Console</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- 2. DATABASE TABLES (WITH LIVE ROW-COUNT BADGES) -->
+          <div>
+            <div class="flex items-center justify-between px-3 mb-1.5">
+              <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Database Tables</p>
+              <span class="text-[9px] font-semibold text-slate-400 uppercase">14 Tables</span>
+            </div>
+            <div class="space-y-0.5">
+              {% for tbl in all_tables %}
+                <a href="/admin/tables/{{ tbl }}" class="flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'table_' ~ tbl else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i data-lucide="database" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
+                    <span class="truncate capitalize">{{ tbl | replace('_', ' ') }}</span>
+                  </div>
+                  <span class="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-zinc-800 text-zinc-300 border border-zinc-700">
+                    {{ table_counts.get(tbl, 0) }}
+                  </span>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- 3. VIEWS (READ-ONLY) -->
+          <div>
+            <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Database Views</p>
+            <div class="space-y-0.5">
+              {% for vw in all_views %}
+                <a href="/admin/views/{{ vw }}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'view_' ~ vw else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                  <i data-lucide="table-2" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
+                  <span class="truncate">{{ vw | replace('vw_', '') | replace('_', ' ') | title }}</span>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- 4. ACTIONS -->
+          <div>
+            <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Actions</p>
+            <div class="space-y-0.5">
+              <a href="/admin/certificates" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'admin_certificates' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="award" class="w-3.5 h-3.5"></i>
+                <span>Issue Certificates</span>
+              </a>
+            </div>
+          </div>
+
+        {% elif is_instructor %}
+          <!-- ==================== INSTRUCTOR MODE SIDEBAR ==================== -->
+          <div>
+            <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Overview</p>
+            <div class="space-y-0.5">
+              <a href="/instructor/dashboard" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_dashboard' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                <span>Studio Dashboard</span>
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">My Course Content</p>
+            <div class="space-y-0.5">
+              <a href="/instructor/courses" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_courses' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                <span>My Courses</span>
+              </a>
+              <a href="/instructor/modules" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_modules' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="folder-tree" class="w-3.5 h-3.5"></i>
+                <span>Modules</span>
+              </a>
+              <a href="/instructor/lessons" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_lessons' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                <span>Lessons</span>
+              </a>
+              <a href="/instructor/quizzes" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_quizzes' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+                <span>Quizzes</span>
+              </a>
+              <a href="/instructor/questions" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_questions' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="list-checks" class="w-3.5 h-3.5"></i>
+                <span>Quiz Questions</span>
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Student Activity</p>
+            <div class="space-y-0.5">
+              <a href="/instructor/learners" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_learners' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                <span>Student Progress</span>
+              </a>
+              <a href="/instructor/enrolments" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_enrolments' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="users" class="w-3.5 h-3.5"></i>
+                <span>Course Enrolments</span>
+              </a>
+              <a href="/instructor/attempts" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_attempts' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+                <span>Quiz Attempts</span>
+              </a>
+              <a href="/instructor/feedback" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'inst_feedback' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+                <span>Student Feedback</span>
+              </a>
+            </div>
+          </div>
+
+        {% else %}
+          <!-- ==================== NORMAL LEARNER MODE SIDEBAR ==================== -->
+          <div>
+            <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Learning Portal</p>
+            <div class="space-y-0.5">
+              <a href="/learner/dashboard" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'learner_dashboard' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="compass" class="w-3.5 h-3.5"></i>
+                <span>Catalog & Enrol</span>
+              </a>
+              <a href="/learner/certificates" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {{ 'bg-zinc-800 text-white font-semibold shadow-xs' if active_page == 'learner_certificates' else 'text-slate-400 hover:text-white hover:bg-zinc-800/60' }}">
+                <i data-lucide="award" class="w-3.5 h-3.5"></i>
+                <span>My Certificates</span>
+              </a>
+            </div>
+          </div>
+        {% endif %}
+      </nav>
+
+      <!-- ACTIVE USER FOOTER -->
+      <div class="p-3.5 border-t border-slate-800 bg-slate-950/60">
+        <div class="flex items-center gap-3">
+          {% if is_admin %}
+            <span class="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
+              AD
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-semibold text-white truncate">Administrator</p>
+              <p class="text-[11px] text-amber-400/90 truncate font-mono">Super Admin</p>
+            </div>
+          {% elif is_instructor %}
+            <span class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
+              {{ current_instructor_name | initials }}
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-semibold text-white truncate">{{ current_instructor_name }}</p>
+              <p class="text-[11px] text-emerald-400 truncate font-mono">Instructor ({{ current_instructor_id }})</p>
+            </div>
+          {% else %}
+            <span class="w-8 h-8 rounded-full bg-zinc-800 text-white border border-zinc-700 font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
+              JM
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-semibold text-white truncate">Jack Marston</p>
+              <p class="text-[11px] text-slate-400 truncate font-mono">Learner (L07)</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MOBILE SIDEBAR DRAWER -->
+  <div x-cloak x-show="sidebarOpen" class="fixed inset-0 flex z-40 lg:hidden" role="dialog" aria-modal="true">
+    <div x-show="sidebarOpen" 
+         x-transition:enter="transition-opacity ease-linear duration-300" 
+         x-transition:enter-start="opacity-0" 
+         x-transition:enter-end="opacity-100" 
+         x-transition:leave="transition-opacity ease-linear duration-300" 
+         x-transition:leave-start="opacity-100" 
+         x-transition:leave-end="opacity-0" 
+         class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" 
+         @click="sidebarOpen = false"></div>
+
+    <div x-show="sidebarOpen" 
+         x-transition:enter="transition ease-in-out duration-300 transform" 
+         x-transition:enter-start="-translate-x-full" 
+         x-transition:enter-end="translate-x-0" 
+         x-transition:leave="transition ease-in-out duration-300 transform" 
+         x-transition:leave-start="translate-x-0" 
+         x-transition:leave-end="-translate-x-full" 
+         class="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-slate-900">
+      <div class="flex items-center justify-between h-16 px-6 border-b border-slate-200 dark:border-slate-800">
+        <span class="text-lg font-bold text-slate-900 dark:text-white">LearnPulse</span>
+        <button type="button" @click="sidebarOpen = false" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {% if is_admin %}
+          <a href="/admin/dashboard" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Dashboard</a>
+          <a href="/admin/reports" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Reports</a>
+          <a href="/admin/sql-console" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">SQL Console</a>
+          <div class="pt-2 border-t border-slate-800">
+            <p class="text-xs font-bold text-slate-400 uppercase mb-2">Tables</p>
+            {% for tbl in all_tables %}
+              <a href="/admin/tables/{{ tbl }}" class="block py-1 text-xs text-slate-400 capitalize">{{ tbl | replace('_', ' ') }}</a>
+            {% endfor %}
+          </div>
+        {% elif is_instructor %}
+          <a href="/instructor/dashboard" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Studio Dashboard</a>
+          <a href="/instructor/courses" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">My Courses</a>
+          <a href="/instructor/modules" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Modules</a>
+          <a href="/instructor/lessons" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Lessons</a>
+          <a href="/instructor/quizzes" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Quizzes</a>
+          <a href="/instructor/questions" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Questions</a>
+          <a href="/instructor/learners" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Student Progress</a>
+          <a href="/instructor/enrolments" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Enrolments</a>
+          <a href="/instructor/attempts" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Attempts</a>
+          <a href="/instructor/feedback" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Feedback</a>
+        {% else %}
+          <a href="/learner/dashboard" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">Course Catalog</a>
+          <a href="/learner/certificates" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300">My Certificates</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN COLUMN -->
+  <div class="flex flex-col flex-1 w-0 overflow-hidden">
+    <!-- TOP NAVIGATION BAR -->
+    <header class="h-16 flex-shrink-0 flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 sm:px-6 z-20">
+      <div class="flex items-center gap-4">
+        <!-- Hamburger for mobile -->
+        <button type="button" @click="sidebarOpen = true" class="lg:hidden text-slate-500 hover:text-slate-700 dark:hover:text-white">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+
+        <!-- BREADCRUMBS -->
+        <nav class="flex items-center text-sm font-medium text-slate-400" aria-label="Breadcrumb">
+          <ol class="flex items-center space-x-2">
+            <li>
+              <a href="/" class="hover:text-white transition-colors">LearnPulse</a>
+            </li>
+            {% block breadcrumbs %}
+            <li><span class="text-slate-600">/</span></li>
+            <li class="text-white font-semibold">{% block current_page %}Dashboard{% endblock %}</li>
+            {% endblock %}
+          </ol>
+        </nav>
+      </div>
+
+      <!-- TOP ACTIONS: MODE TOGGLES + THEME TOGGLE -->
+      <div class="flex items-center gap-3">
+        {% if is_admin %}
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+              <span>Admin Mode</span>
+            </span>
+            <a href="/auth/admin-exit" 
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 border border-slate-700 transition-colors"
+               title="Exit Admin Mode">
+              <i data-lucide="lock" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span class="hidden sm:inline">Exit</span>
+            </a>
+          </div>
+        {% elif is_instructor %}
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <i data-lucide="graduation-cap" class="w-3.5 h-3.5"></i>
+              <span>Instructor: {{ current_instructor_name }}</span>
+            </span>
+            <a href="/auth/instructor-exit" 
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 border border-slate-700 transition-colors"
+               title="Exit Instructor Mode">
+              <i data-lucide="log-out" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span class="hidden sm:inline">Exit</span>
+            </a>
+          </div>
+        {% else %}
+          <!-- Normal Mode: Instructor Mode button & Admin Mode button -->
+          <button 
+            type="button" 
+            @click="$store.instructorModal.open()" 
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-850 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 transition-colors shadow-xs">
+            <i data-lucide="graduation-cap" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>Instructor mode</span>
+          </button>
+
+          <button 
+            type="button" 
+            @click="$store.adminModal.open()" 
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-850 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 transition-colors shadow-xs">
+            <i data-lucide="lock" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>Admin mode</span>
+          </button>
+        {% endif %}
+
+        <!-- 3. DARK / LIGHT THEME TOGGLE -->
+        <button 
+          type="button" 
+          @click="$store.theme.toggle()" 
+          title="Toggle Dark / Light Theme"
+          class="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <template x-if="$store.theme.dark">
+            <i data-lucide="sun" class="w-4 h-4 text-amber-400"></i>
+          </template>
+          <template x-if="!$store.theme.dark">
+            <i data-lucide="moon" class="w-4 h-4 text-slate-600"></i>
+          </template>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN SCROLLABLE CONTENT BODY -->
+    <main class="flex-1 overflow-y-auto bg-slate-50/70 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto space-y-6">
+        <!-- FLASK FLASH MESSAGES MAPPED TO TOASTS -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <script>
+              document.addEventListener('DOMContentLoaded', () => {
+                {% for category, message in messages %}
+                  window.showToast("{{ message }}", "{{ 'error' if category == 'error' else ('warning' if category == 'warning' else 'success') }}");
+                {% endfor %}
+              });
+            </script>
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+
+  <!-- Initialize Lucide Icons on Load -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

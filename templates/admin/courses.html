@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Courses Catalog — LearnPulse{% endblock %}
+{% block current_page %}Courses{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ 
+  viewMode: 'grid', 
+  search: '', 
+  statusFilter: 'all',
+  createModalOpen: false,
+  editModalOpen: false,
+  currentCourse: { id: '', title: '', slug: '', instructor_id: 1, category: 'Databases', difficulty: 'beginner', price: 0, status: 'draft', passing_score: 70, description: '' },
+  openEdit(c) {
+    this.currentCourse = Object.assign({}, c);
+    this.editModalOpen = true;
+  }
+}">
+  <!-- HEADER & ACTIONS -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Courses & Curriculum</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Author, organize, and monitor technical tracks and syllabi.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <!-- Grid / Table view toggle -->
+      <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+        <button type="button" @click="viewMode = 'grid'" :class="viewMode === 'grid' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-xs' : 'text-slate-500 dark:text-slate-400'" class="p-1.5 rounded-md text-xs font-medium transition-colors" title="Grid View">
+          <i data-lucide="layout-grid" class="w-4 h-4"></i>
+        </button>
+        <button type="button" @click="viewMode = 'table'" :class="viewMode === 'table' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-xs' : 'text-slate-500 dark:text-slate-400'" class="p-1.5 rounded-md text-xs font-medium transition-colors" title="Table View">
+          <i data-lucide="list" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <button type="button" @click="createModalOpen = true" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-colors">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        <span>Create Course</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- FILTERS & SEARCH -->
+  <div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800">
+    <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
+      <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-2">Status:</span>
+      <button type="button" @click="statusFilter = 'all'" :class="statusFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-3 py-1 text-xs font-medium rounded-lg transition-colors">All ({{ courses | length }})</button>
+      <button type="button" @click="statusFilter = 'published'" :class="statusFilter === 'published' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-3 py-1 text-xs font-medium rounded-lg transition-colors">Published</button>
+      <button type="button" @click="statusFilter = 'draft'" :class="statusFilter === 'draft' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-3 py-1 text-xs font-medium rounded-lg transition-colors">Drafts</button>
+      <button type="button" @click="statusFilter = 'archived'" :class="statusFilter === 'archived' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'" class="px-3 py-1 text-xs font-medium rounded-lg transition-colors">Archived</button>
+    </div>
+
+    <div class="w-full md:w-72 relative">
+      <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+      <input type="text" x-model="search" placeholder="Search courses or categories..." class="w-full pl-9 pr-3.5 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600">
+    </div>
+  </div>
+
+  <!-- 1. GRID VIEW -->
+  <div x-show="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {% for c in courses %}
+      <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden flex flex-col justify-between hover:shadow-md transition-all group"
+           x-show="(statusFilter === 'all' || statusFilter === '{{ c.status }}') && (search === '' || '{{ c.title | lower }}'.includes(search.toLowerCase()) || '{{ c.category | lower }}'.includes(search.toLowerCase()))">
+        <div>
+          <!-- Thumbnail -->
+          <div class="relative h-44 w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <img src="{{ c.thumbnail_url or 'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=600' }}" 
+                 alt="{{ c.title }}" 
+                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+            <div class="absolute top-3 left-3 flex gap-1.5">
+              {{ ui.status_badge(c.status) }}
+              {{ ui.status_badge(c.difficulty) }}
+            </div>
+            <div class="absolute bottom-3 right-3 bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-bold px-2 py-0.5 rounded">
+              ${{ "%.2f"|format(c.price) }}
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div class="p-5">
+            <span class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block mb-1">{{ c.category }}</span>
+            <a href="/admin/courses/{{ c.id }}" class="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors line-clamp-2">
+              {{ c.title }}
+            </a>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 leading-relaxed">
+              {{ c.description }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="px-5 py-3.5 bg-slate-50/70 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500 dark:text-slate-400">By {{ c.instructor_name }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" @click='openEdit({{ c | tojson }})' class="p-1 text-slate-400 hover:text-indigo-600 transition-colors" title="Edit Course">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+            <a href="/admin/courses/{{ c.id }}" class="inline-flex items-center text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              Syllabus →
+            </a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- 2. TABLE VIEW -->
+  <div x-show="viewMode === 'table'" class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse table-sticky-header">
+        <thead>
+          <tr class="bg-slate-50/80 dark:bg-slate-850 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800">
+            <th class="py-3.5 px-6">Course Title</th>
+            <th class="py-3.5 px-6">Category</th>
+            <th class="py-3.5 px-6">Instructor</th>
+            <th class="py-3.5 px-6">Difficulty</th>
+            <th class="py-3.5 px-6">Status</th>
+            <th class="py-3.5 px-6">Enrolments</th>
+            <th class="py-3.5 px-6 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+          {% for c in courses %}
+            <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                x-show="(statusFilter === 'all' || statusFilter === '{{ c.status }}') && (search === '' || '{{ c.title | lower }}'.includes(search.toLowerCase()) || '{{ c.category | lower }}'.includes(search.toLowerCase()))">
+              <td class="py-3.5 px-6 font-semibold text-slate-900 dark:text-white">
+                <a href="/admin/courses/{{ c.id }}" class="hover:text-indigo-600 transition-colors">
+                  {{ c.title }}
+                </a>
+              </td>
+              <td class="py-3.5 px-6 text-slate-600 dark:text-slate-300">
+                {{ c.category }}
+              </td>
+              <td class="py-3.5 px-6 text-slate-600 dark:text-slate-300">
+                {{ c.instructor_name }}
+              </td>
+              <td class="py-3.5 px-6">
+                {{ ui.status_badge(c.difficulty) }}
+              </td>
+              <td class="py-3.5 px-6">
+                {{ ui.status_badge(c.status) }}
+              </td>
+              <td class="py-3.5 px-6 font-medium text-slate-700 dark:text-slate-300">
+                {{ c.total_enrolments or 0 }} students
+              </td>
+              <td class="py-3.5 px-6 text-right space-x-2">
+                <a href="/admin/courses/{{ c.id }}" class="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors" title="Manage Modules & Lessons">
+                  <i data-lucide="external-link" class="w-4 h-4"></i>
+                </a>
+                <button type="button" @click='openEdit({{ c | tojson }})' class="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors" title="Edit Course">
+                  <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
+                <button type="button" 
+                        @click="$store.deleteModal.open('/admin/courses/delete/{{ c.id }}', 'Delete Course', 'Are you sure you want to delete {{ c.title }}? This will remove all modules, lessons, and tests.')"
+                        class="p-1.5 text-slate-400 hover:text-rose-600 transition-colors" title="Delete Course">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CREATE COURSE MODAL -->
+  <div x-cloak x-show="createModalOpen" class="fixed inset-0 z-50 overflow-y-auto" role="dialog">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="createModalOpen = false"></div>
+      <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 dark:border-slate-800 p-6 z-10">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <h3 class="text-base font-semibold text-slate-900 dark:text-white">Create New Course Track</h3>
+          <button @click="createModalOpen = false" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <form action="/admin/courses/create" method="POST" class="mt-4 space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Course Title</label>
+            <input type="text" name="title" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Category</label>
+              <input type="text" name="category" placeholder="e.g. Databases, Cloud" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Lead Instructor</label>
+              <select name="instructor_id" class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                {% for inst in instructors %}
+                  <option value="{{ inst.id }}">{{ inst.name }} ({{ inst.expertise }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Difficulty</label>
+              <select name="difficulty" class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Status</label>
+              <select name="status" class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Passing Score (%)</label>
+              <input type="number" name="passing_score" value="70" min="0" max="100" class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Description</label>
+            <textarea name="description" rows="3" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white"></textarea>
+          </div>
+          <div class="pt-3 flex justify-end gap-2">
+            <button type="button" @click="createModalOpen = false" class="px-4 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50">Cancel</button>
+            <button type="submit" class="px-4 py-2 text-xs rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-500">Create Course</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT COURSE MODAL -->
+  <div x-cloak x-show="editModalOpen" class="fixed inset-0 z-50 overflow-y-auto" role="dialog">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="editModalOpen = false"></div>
+      <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 dark:border-slate-800 p-6 z-10">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <h3 class="text-base font-semibold text-slate-900 dark:text-white">Edit Course</h3>
+          <button @click="editModalOpen = false" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <form :action="'/admin/courses/edit/' + currentCourse.id" method="POST" class="mt-4 space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Course Title</label>
+            <input type="text" name="title" x-model="currentCourse.title" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Category</label>
+              <input type="text" name="category" x-model="currentCourse.category" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Difficulty</label>
+              <select name="difficulty" x-model="currentCourse.difficulty" class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Status</label>
+              <select name="status" x-model="currentCourse.status" class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Passing Score (%)</label>
+              <input type="number" name="passing_score" x-model="currentCourse.passing_score" min="0" max="100" class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Description</label>
+            <textarea name="description" x-model="currentCourse.description" rows="3" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white"></textarea>
+          </div>
+          <div class="pt-3 flex justify-end gap-2">
+            <button type="button" @click="editModalOpen = false" class="px-4 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50">Cancel</button>
+            <button type="submit" class="px-4 py-2 text-xs rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-500">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

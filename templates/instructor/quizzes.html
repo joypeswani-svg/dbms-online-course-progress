@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Quizzes — Instructor Studio{% endblock %}
+{% block current_page %}Quizzes{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ 
+  search: '', 
+  createModal: false, 
+  editModal: false,
+  deleteModal: false,
+  editQuiz: { id: '', title: '', pass_marks: 70, max_attempts: 3 },
+  deleteQuiz: { id: '', title: '' }
+}">
+  <!-- HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider font-mono">
+          Assessments
+        </span>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Course Quizzes</h1>
+      </div>
+      <p class="text-xs text-slate-400 mt-1">Configure grading thresholds, maximum attempts, and attach quizzes to your modules.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative w-48 sm:w-64">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+        <input type="text" x-model="search" placeholder="Search quizzes..." class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-zinc-400">
+      </div>
+      <button type="button" @click="createModal = true" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-lg shadow-xs transition-colors shrink-0">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        <span>Add Quiz</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- QUIZZES TABLE -->
+  <div class="bg-slate-900 rounded-xl shadow-xs border border-slate-800 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse table-sticky-header text-xs">
+        <thead>
+          <tr class="bg-slate-950/70 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+            <th class="py-3 px-5">ID</th>
+            <th class="py-3 px-5">Course Track</th>
+            <th class="py-3 px-5">Module</th>
+            <th class="py-3 px-5">Quiz Title</th>
+            <th class="py-3 px-5">Pass Marks</th>
+            <th class="py-3 px-5">Max Attempts</th>
+            <th class="py-3 px-5">Questions</th>
+            <th class="py-3 px-5 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/80">
+          {% for q in quizzes %}
+            <tr class="hover:bg-slate-850/60 transition-colors"
+                x-show="search === '' || '{{ q.title | lower }}'.includes(search.toLowerCase()) || '{{ q.course_title | lower }}'.includes(search.toLowerCase()) || '{{ q.module_title | lower }}'.includes(search.toLowerCase())">
+              <td class="py-3 px-5 font-mono text-slate-400">#{{ q.id }}</td>
+              <td class="py-3 px-5 font-semibold text-slate-200">{{ q.course_title }}</td>
+              <td class="py-3 px-5 text-slate-400">{{ q.module_title }}</td>
+              <td class="py-3 px-5 font-medium text-white">{{ q.title }}</td>
+              <td class="py-3 px-5 font-mono text-emerald-400">{{ q.pass_marks }} pts</td>
+              <td class="py-3 px-5 text-slate-300 font-mono">{{ q.max_attempts }} tries</td>
+              <td class="py-3 px-5 font-semibold text-slate-200">
+                <a href="/instructor/questions" class="hover:text-emerald-400 underline underline-offset-2">
+                  {{ q.questions_count }} items
+                </a>
+              </td>
+              <td class="py-3 px-5 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <a href="/instructor/questions" class="px-2 py-1 text-xs font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded transition-colors">
+                    Questions
+                  </a>
+                  <button type="button" 
+                          @click="editQuiz = { id: '{{ q.id }}', title: '{{ q.title | escape }}', pass_marks: '{{ q.pass_marks }}', max_attempts: '{{ q.max_attempts }}' }; editModal = true" 
+                          class="px-2 py-1 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition-colors">
+                    Edit
+                  </button>
+                  <button type="button"
+                          @click="deleteQuiz = { id: '{{ q.id }}', title: '{{ q.title | escape }}' }; deleteModal = true"
+                          class="px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded transition-colors">
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CREATE QUIZ MODAL -->
+  <div x-cloak x-show="createModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div @click.away="createModal = false" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white">Add Quiz Assessment</h3>
+        <button type="button" @click="createModal = false" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form action="/instructor/quizzes/create" method="POST" class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Target Module *</label>
+          <select name="module_id" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+            {% for m in my_modules %}
+              <option value="{{ m.id }}">{{ m.course_title }} — {{ m.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Quiz Title *</label>
+          <input type="text" name="title" required placeholder="e.g., Relational Normalization Mastery Quiz" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Pass Marks Threshold</label>
+            <input type="number" name="pass_marks" value="70" min="1" max="100" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Max Allowed Attempts</label>
+            <input type="number" name="max_attempts" value="3" min="1" max="10" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button type="button" @click="createModal = false" class="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 font-semibold transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors">
+            Save Quiz
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- EDIT QUIZ MODAL -->
+  <div x-cloak x-show="editModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div @click.away="editModal = false" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white">Edit Quiz #<span x-text="editQuiz.id"></span></h3>
+        <button type="button" @click="editModal = false" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form :action="'/instructor/quizzes/edit/' + editQuiz.id" method="POST" class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Quiz Title *</label>
+          <input type="text" name="title" x-model="editQuiz.title" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Pass Marks</label>
+            <input type="number" name="pass_marks" x-model="editQuiz.pass_marks" min="1" max="100" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Max Attempts</label>
+            <input type="number" name="max_attempts" x-model="editQuiz.max_attempts" min="1" max="10" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button type="button" @click="editModal = false" class="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 font-semibold transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors">
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- DELETE QUIZ MODAL -->
+  <div x-cloak x-show="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div @click.away="deleteModal = false" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center gap-3 text-red-400">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        <h3 class="text-base font-bold text-white">Delete Quiz</h3>
+      </div>
+      <p class="text-xs text-slate-400">
+        Are you sure you want to delete <strong class="text-white" x-text="deleteQuiz.title"></strong>? Any attached questions and student attempt records will be removed.
+      </p>
+      <form :action="'/instructor/quizzes/delete/' + deleteQuiz.id" method="POST" class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800 text-xs">
+        <button type="button" @click="deleteModal = false" class="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 font-medium transition-colors">
+          Cancel
+        </button>
+        <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors">
+          Delete Quiz
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

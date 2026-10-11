@@ -1,0 +1,146 @@
+{# Reusable Jinja2 UI Macros for LearnPulse SaaS #}
+
+{# 1. BADGE MACRO #}
+{% macro badge(text, type='neutral', size='md') %}
+  {% set size_classes = 'px-2.5 py-0.5 text-xs' if size == 'sm' else 'px-3 py-1 text-xs' %}
+  {% set color_classes = {
+    'primary': 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-950/60 dark:text-indigo-300 dark:ring-indigo-700/30',
+    'success': 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-500/30',
+    'warning': 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-950/60 dark:text-amber-300 dark:ring-amber-500/30',
+    'danger': 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/10 dark:bg-rose-950/60 dark:text-rose-300 dark:ring-rose-500/30',
+    'neutral': 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-600/10 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700',
+    'purple': 'bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-700/10 dark:bg-purple-950/60 dark:text-purple-300 dark:ring-purple-700/30',
+    'sky': 'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-700/10 dark:bg-sky-950/60 dark:text-sky-300 dark:ring-sky-700/30'
+  }[type] | default('bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-600/10') %}
+  <span class="inline-flex items-center font-medium rounded-full {{ size_classes }} {{ color_classes }}">
+    {{ text }}
+  </span>
+{% endmacro %}
+
+{# 2. STATUS BADGE MAPPING #}
+{% macro status_badge(status) %}
+  {% set s = status | string | lower %}
+  {% if s in ['active', 'published', 'completed', 'passed', 'success', 'true', '1'] %}
+    {{ badge(status | capitalize, 'success') }}
+  {% elif s in ['draft', 'pending', 'warning', 'in_progress'] %}
+    {{ badge(status | capitalize, 'warning') }}
+  {% elif s in ['dropped', 'failed', 'archived', 'false', '0', 'danger', 'inactive'] %}
+    {{ badge(status | capitalize, 'danger') }}
+  {% elif s in ['admin', 'intermediate'] %}
+    {{ badge(status | capitalize, 'primary') }}
+  {% elif s in ['instructor', 'advanced'] %}
+    {{ badge(status | capitalize, 'purple') }}
+  {% elif s in ['learner', 'beginner'] %}
+    {{ badge(status | capitalize, 'sky') }}
+  {% else %}
+    {{ badge(status | capitalize, 'neutral') }}
+  {% endif %}
+{% endmacro %}
+
+{# 3. BUTTON MACRO #}
+{% macro button(text, type='button', variant='primary', size='md', icon=None, extra_classes='', onclick=None, alpine_click=None) %}
+  {% set size_classes = {
+    'sm': 'px-3 py-1.5 text-xs',
+    'md': 'px-4 py-2 text-sm',
+    'lg': 'px-5 py-2.5 text-base'
+  }[size] | default('px-4 py-2 text-sm') %}
+  {% set variant_classes = {
+    'primary': 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-500',
+    'secondary': 'bg-white text-slate-700 hover:bg-slate-50 ring-1 ring-inset ring-slate-300 shadow-sm dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-750',
+    'danger': 'bg-rose-600 text-white hover:bg-rose-500 shadow-sm focus-visible:outline-rose-600',
+    'ghost': 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800',
+    'outline-indigo': 'ring-1 ring-inset ring-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:ring-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-950/40'
+  }[variant] | default('bg-indigo-600 text-white hover:bg-indigo-500') %}
+  <button 
+    type="{{ type }}" 
+    {% if onclick %}onclick="{{ onclick }}"{% endif %}
+    {% if alpine_click %}@click="{{ alpine_click }}"{% endif %}
+    class="inline-flex items-center justify-center font-medium rounded-lg transition-colors duration-150 gap-2 {{ size_classes }} {{ variant_classes }} {{ extra_classes }}">
+    {% if icon %}
+      <i data-lucide="{{ icon }}" class="w-4 h-4"></i>
+    {% endif %}
+    <span>{{ text }}</span>
+  </button>
+{% endmacro %}
+
+{# 4. CARD WRAPPER MACRO #}
+{% macro card(title=None, subtitle=None, action=None, extra_classes='') %}
+  <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 {{ extra_classes }}">
+    {% if title or action %}
+      <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800/80">
+        <div>
+          {% if title %}
+            <h3 class="text-base font-semibold text-slate-900 dark:text-white">{{ title }}</h3>
+          {% endif %}
+          {% if subtitle %}
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ subtitle }}</p>
+          {% endif %}
+        </div>
+        {% if action %}
+          <div>{{ action }}</div>
+        {% endif %}
+      </div>
+    {% endif %}
+    {{ caller() }}
+  </div>
+{% endmacro %}
+
+{# 5. KPI METRIC CARD #}
+{% macro kpi_card(title, value, change=None, change_type='up', icon='bar-chart', color='indigo') %}
+  <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 flex flex-col justify-between transition-all hover:shadow-md">
+    <div class="flex items-center justify-between">
+      <span class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ title }}</span>
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-{{ color }}-50 text-{{ color }}-600 dark:bg-{{ color }}-950/50 dark:text-{{ color }}-400">
+        <i data-lucide="{{ icon }}" class="w-5 h-5"></i>
+      </div>
+    </div>
+    <div class="mt-4 flex items-baseline justify-between">
+      <div class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ value }}</div>
+      {% if change %}
+        <span class="inline-flex items-center text-xs font-medium {{ 'text-emerald-600 dark:text-emerald-400' if change_type == 'up' else 'text-rose-600 dark:text-rose-400' }}">
+          {% if change_type == 'up' %}
+            <i data-lucide="trending-up" class="w-3.5 h-3.5 mr-1"></i>
+          {% else %}
+            <i data-lucide="trending-down" class="w-3.5 h-3.5 mr-1"></i>
+          {% endif %}
+          {{ change }}
+        </span>
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}
+
+{# 6. EMPTY STATE MACRO #}
+{% macro empty_state(icon='folder-open', title='No data found', description='Get started by creating your first record.', action_label=None, action_click=None) %}
+  <div class="text-center py-12 px-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+    <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 mx-auto flex items-center justify-center mb-4">
+      <i data-lucide="{{ icon }}" class="w-6 h-6"></i>
+    </div>
+    <h3 class="text-sm font-semibold text-slate-900 dark:text-white">{{ title }}</h3>
+    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">{{ description }}</p>
+    {% if action_label and action_click %}
+      <div class="mt-5">
+        <button type="button" @click="{{ action_click }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          {{ action_label }}
+        </button>
+      </div>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{# 7. PROGRESS BAR #}
+{% macro progress_bar(percent, show_label=true) %}
+  {% set p = percent | float | round(1) %}
+  <div class="w-full flex items-center gap-3">
+    <div class="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+      <div 
+        class="h-2 rounded-full transition-all duration-500 {{ 'bg-emerald-500' if p >= 100 else ('bg-indigo-600' if p >= 50 else 'bg-amber-500') }}" 
+        style="width: {{ p }}%">
+      </div>
+    </div>
+    {% if show_label %}
+      <span class="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-300 w-10 text-right">{{ p }}%</span>
+    {% endif %}
+  </div>
+{% endmacro %}

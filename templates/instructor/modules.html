@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Course Modules — Instructor Studio{% endblock %}
+{% block current_page %}Course Modules{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ 
+  search: '', 
+  createModal: false, 
+  editModal: false,
+  deleteModal: false,
+  editModule: { id: '', title: '', order_num: 1, course_title: '' },
+  deleteModule: { id: '', title: '' }
+}">
+  <!-- HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider font-mono">
+          Curriculum
+        </span>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Course Modules</h1>
+      </div>
+      <p class="text-xs text-slate-400 mt-1">Organize syllabus modules and topics across your authored courses.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative w-48 sm:w-64">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+        <input type="text" x-model="search" placeholder="Search modules..." class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-zinc-400">
+      </div>
+      <button type="button" @click="createModal = true" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-lg shadow-xs transition-colors shrink-0">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        <span>Add Module</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODULES TABLE -->
+  <div class="bg-slate-900 rounded-xl shadow-xs border border-slate-800 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse table-sticky-header text-xs">
+        <thead>
+          <tr class="bg-slate-950/70 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+            <th class="py-3 px-5">ID</th>
+            <th class="py-3 px-5">Course Track</th>
+            <th class="py-3 px-5">Order</th>
+            <th class="py-3 px-5">Module Title</th>
+            <th class="py-3 px-5">Lessons</th>
+            <th class="py-3 px-5">Quizzes</th>
+            <th class="py-3 px-5 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/80">
+          {% for m in modules %}
+            <tr class="hover:bg-slate-850/60 transition-colors"
+                x-show="search === '' || '{{ m.title | lower }}'.includes(search.toLowerCase()) || '{{ m.course_title | lower }}'.includes(search.toLowerCase())">
+              <td class="py-3 px-5 font-mono text-slate-400">#{{ m.id }}</td>
+              <td class="py-3 px-5 font-semibold text-slate-200">{{ m.course_title }}</td>
+              <td class="py-3 px-5 font-mono text-slate-400">{{ m.order_num }}</td>
+              <td class="py-3 px-5 font-medium text-white">{{ m.title }}</td>
+              <td class="py-3 px-5 text-slate-300">
+                <a href="/instructor/lessons" class="hover:text-emerald-400 underline underline-offset-2">
+                  {{ m.lessons_count }} lessons
+                </a>
+              </td>
+              <td class="py-3 px-5 text-slate-300">
+                <a href="/instructor/quizzes" class="hover:text-emerald-400 underline underline-offset-2">
+                  {{ m.quizzes_count }} quizzes
+                </a>
+              </td>
+              <td class="py-3 px-5 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <button type="button" 
+                          @click="editModule = { id: '{{ m.id }}', title: '{{ m.title | escape }}', order_num: '{{ m.order_num }}', course_title: '{{ m.course_title | escape }}' }; editModal = true" 
+                          class="px-2 py-1 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition-colors">
+                    Edit
+                  </button>
+                  <button type="button"
+                          @click="deleteModule = { id: '{{ m.id }}', title: '{{ m.title | escape }}' }; deleteModal = true"
+                          class="px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded transition-colors">
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CREATE MODULE MODAL -->
+  <div x-cloak x-show="createModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div @click.away="createModal = false" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white">Add Module</h3>
+        <button type="button" @click="createModal = false" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form action="/instructor/modules/create" method="POST" class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Course Track *</label>
+          <select name="course_id" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+            {% for c in my_courses %}
+              <option value="{{ c.id }}">{{ c.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Module Title *</label>
+          <input type="text" name="title" required placeholder="e.g., Module 1: Relational Calculus" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Order Sequence Number</label>
+          <input type="number" name="order_num" value="1" min="1" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button type="button" @click="createModal = false" class="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 font-semibold transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors">
+            Save Module
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- EDIT MODULE MODAL -->
+  <div x-cloak x-show="editModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div @click.away="editModal = false" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white">Edit Module #<span x-text="editModule.id"></span></h3>
+        <button type="button" @click="editModal = false" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form :action="'/instructor/modules/edit/' + editModule.id" method="POST" class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Module Title *</label>
+          <input type="text" name="title" x-model="editModule.title" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Order Sequence Number</label>
+          <input type="number" name="order_num" x-model="editModule.order_num" min="1" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button type="button" @click="editModal = false" class="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 font-semibold transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors">
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- DELETE MODULE MODAL -->
+  <div x-cloak x-show="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div @click.away="deleteModal = false" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center gap-3 text-red-400">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        <h3 class="text-base font-bold text-white">Delete Module</h3>
+      </div>
+      <p class="text-xs text-slate-400">
+        Are you sure you want to delete <strong class="text-white" x-text="deleteModule.title"></strong>? Any attached lessons and quizzes will be affected.
+      </p>
+      <form :action="'/instructor/modules/delete/' + deleteModule.id" method="POST" class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800 text-xs">
+        <button type="button" @click="deleteModal = false" class="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 font-medium transition-colors">
+          Cancel
+        </button>
+        <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors">
+          Delete Module
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

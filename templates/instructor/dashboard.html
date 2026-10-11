@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Instructor Studio — LearnPulse{% endblock %}
+{% block current_page %}Instructor Studio{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider font-mono">
+          {{ instructor.id }}
+        </span>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Instructor Studio</h1>
+      </div>
+      <p class="text-xs text-slate-400 mt-1">
+        Welcome back, <strong class="text-slate-200">{{ instructor.name }}</strong> ({{ instructor.title }}). You have full authoring control over your course curricula.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/instructor/courses" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg shadow-xs transition-colors">
+        <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+        <span>Manage Courses</span>
+      </a>
+      <a href="/instructor/modules" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg shadow-xs transition-colors">
+        <i data-lucide="folder-tree" class="w-3.5 h-3.5"></i>
+        <span>Modules</span>
+      </a>
+      <a href="/instructor/lessons" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-lg shadow-xs transition-colors">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        <span>Add Lesson</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="p-4 rounded-xl border border-slate-800 bg-slate-900 shadow-xs flex flex-col justify-between">
+      <div class="flex items-center justify-between text-slate-400">
+        <span class="text-xs font-medium uppercase tracking-wider">My Courses</span>
+        <i data-lucide="book-open" class="w-4 h-4 text-emerald-400"></i>
+      </div>
+      <div class="mt-3">
+        <div class="text-2xl font-bold text-white">{{ my_courses | length }}</div>
+        <p class="text-[11px] text-slate-400 mt-0.5">Assigned author tracks</p>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-xl border border-slate-800 bg-slate-900 shadow-xs flex flex-col justify-between">
+      <div class="flex items-center justify-between text-slate-400">
+        <span class="text-xs font-medium uppercase tracking-wider">Curriculum Units</span>
+        <i data-lucide="layers" class="w-4 h-4 text-cyan-400"></i>
+      </div>
+      <div class="mt-3">
+        <div class="text-2xl font-bold text-white">{{ modules_count }} <span class="text-xs font-normal text-slate-400">mod /</span> {{ lessons_count }} <span class="text-xs font-normal text-slate-400">les</span></div>
+        <p class="text-[11px] text-slate-400 mt-0.5">{{ quizzes_count }} quizzes authored</p>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-xl border border-slate-800 bg-slate-900 shadow-xs flex flex-col justify-between">
+      <div class="flex items-center justify-between text-slate-400">
+        <span class="text-xs font-medium uppercase tracking-wider">Total Students</span>
+        <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i>
+      </div>
+      <div class="mt-3">
+        <div class="text-2xl font-bold text-white">{{ total_students }}</div>
+        <p class="text-[11px] text-slate-400 mt-0.5">{{ total_completions }} certified completions</p>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-xl border border-slate-800 bg-slate-900 shadow-xs flex flex-col justify-between">
+      <div class="flex items-center justify-between text-slate-400">
+        <span class="text-xs font-medium uppercase tracking-wider">Average Rating</span>
+        <i data-lucide="star" class="w-4 h-4 text-amber-400"></i>
+      </div>
+      <div class="mt-3">
+        <div class="text-2xl font-bold text-white">{{ avg_rating }} ★</div>
+        <p class="text-[11px] text-slate-400 mt-0.5">Based on {{ total_reviews }} reviews</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY COURSES SECTION -->
+  <div class="p-5 rounded-xl border border-slate-800 bg-slate-900 space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+      <div>
+        <h2 class="text-sm font-bold text-white">My Authored Courses</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Only you can edit curriculums and add quizzes to these courses.</p>
+      </div>
+      <a href="/instructor/courses" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+        <span>View all tracks</span>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+      {% for c in my_courses %}
+        <div class="rounded-xl border border-slate-800 bg-slate-850 p-4 flex flex-col justify-between hover:border-slate-700 transition-colors">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded {{ 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' if c.status == 'published' else 'bg-slate-800 text-slate-400 border border-slate-700' }}">
+                {{ c.status }}
+              </span>
+              <span class="text-xs font-bold text-slate-200 font-mono">${{ "%.2f"|format(c.price) }}</span>
+            </div>
+            <h3 class="text-sm font-bold text-white line-clamp-1">{{ c.title }}</h3>
+            <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ c.description }}</p>
+            
+            <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span>{{ c.enrolments_count }} Enrolled</span>
+              <span class="text-emerald-400 font-semibold">{{ c.completions_count }} Completed</span>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+            <a href="/instructor/modules" class="text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1">
+              <i data-lucide="folder-tree" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>Modules</span>
+            </a>
+            <a href="/instructor/lessons" class="text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1">
+              <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>Lessons</span>
+            </a>
+            <a href="/instructor/quizzes" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+              <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+              <span>Quizzes</span>
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

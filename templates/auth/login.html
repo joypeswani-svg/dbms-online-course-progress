@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-white dark:bg-slate-950 font-sans">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — LearnPulse SaaS</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            indigo: { 600: '#4F46E5', 500: '#6366F1', 50: '#EEF2FF', 950: '#1E1B4B' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+</head>
+<body class="h-full" x-data="{ email: '', password: '', role: 'admin' }">
+  <div class="min-h-full flex">
+    <!-- LEFT BRANDING / SHOWCASE PANEL -->
+    <div class="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-indigo-950 via-slate-950 to-indigo-900 text-white p-12 flex-col justify-between overflow-hidden">
+      <!-- Background subtle gradient grid -->
+      <div class="absolute inset-0 bg-[radial-gradient(#4F46E5_1px,transparent_1px)] [background-size:24px_24px] opacity-20"></div>
+
+      <!-- Header Brand -->
+      <div class="relative z-10 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <i data-lucide="layers" class="w-6 h-6 text-white"></i>
+        </div>
+        <span class="text-xl font-bold tracking-tight">LearnPulse</span>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">Enterprise v2.0</span>
+      </div>
+
+      <!-- Showcase Hero Content -->
+      <div class="relative z-10 my-auto max-w-lg space-y-6">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-900/60 border border-indigo-700/50 text-xs font-medium text-indigo-200">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+          Next-Gen Learning Progress Management
+        </div>
+        <h1 class="text-4xl font-extrabold tracking-tight text-white leading-tight">
+          Precision analytics, automated assessments, and verifiable credentials.
+        </h1>
+        <p class="text-base text-slate-300 leading-relaxed">
+          Engineered for high-performing tech organizations. Track lesson completions in real time, evaluate multi-attempt quizzes with atomic transactions, and issue cryptographic certificates.
+        </p>
+
+        <!-- KPI Pill badges -->
+        <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-800">
+          <div>
+            <div class="text-2xl font-bold text-white">100%</div>
+            <div class="text-xs text-slate-400">3NF Normalized</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-white">&lt; 15ms</div>
+            <div class="text-xs text-slate-400">Query Latency</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-white">ACID</div>
+            <div class="text-xs text-slate-400">Atomic Scoring</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Testimonial Footer -->
+      <div class="relative z-10 pt-6 border-t border-slate-800/80 flex items-center gap-4">
+        <img class="h-10 w-10 rounded-full object-cover ring-2 ring-indigo-500/40" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150" alt="">
+        <div>
+          <p class="text-sm font-semibold text-white">Dr. Sarah Jenkins</p>
+          <p class="text-xs text-slate-400">Principal Database Architect, MIT & Hyperscale</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT LOGIN FORM PANEL -->
+    <div class="flex-1 flex flex-col justify-center py-12 px-6 sm:px-12 lg:px-16 xl:px-24 bg-white dark:bg-slate-900">
+      <div class="mx-auto w-full max-w-sm">
+        <div class="text-left">
+          <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome back</h2>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Sign in to your LearnPulse account</p>
+        </div>
+
+        <!-- ERROR ALERT IF ANY -->
+        {% if error %}
+          <div class="mt-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+            <span>{{ error }}</span>
+          </div>
+        {% endif %}
+
+        <!-- DEMO ACCOUNT QUICK LOGIN BUTTONS -->
+        <div class="mt-6">
+          <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Instant Demo Logins</p>
+          <div class="grid grid-cols-3 gap-2">
+            <button 
+              type="button" 
+              @click="email='admin@learnpulse.io'; password='admin123'"
+              class="p-2 text-center rounded-lg border border-slate-200 dark:border-slate-800 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200 transition-all">
+              <span class="block font-bold text-indigo-600">Admin</span>
+              <span class="text-[10px] text-slate-400">Alex Morgan</span>
+            </button>
+            <button 
+              type="button" 
+              @click="email='sarah.jenkins@mit.edu'; password='instructor123'"
+              class="p-2 text-center rounded-lg border border-slate-200 dark:border-slate-800 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200 transition-all">
+              <span class="block font-bold text-indigo-600">Instructor</span>
+              <span class="text-[10px] text-slate-400">Dr. Jenkins</span>
+            </button>
+            <button 
+              type="button" 
+              @click="email='maya.lin@stripe.com'; password='learner123'"
+              class="p-2 text-center rounded-lg border border-slate-200 dark:border-slate-800 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200 transition-all">
+              <span class="block font-bold text-indigo-600">Learner</span>
+              <span class="text-[10px] text-slate-400">Maya Lin</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="relative my-6">
+          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200 dark:border-slate-800"></div></div>
+          <div class="relative flex justify-center text-xs"><span class="px-2 bg-white dark:bg-slate-900 text-slate-400">or enter credentials</span></div>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form class="space-y-4" action="/auth/login" method="POST">
+          <div>
+            <label for="email" class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Email address</label>
+            <div class="mt-1 relative">
+              <input 
+                id="email" 
+                name="email" 
+                type="email" 
+                x-model="email" 
+                required 
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3.5 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 transition-all"
+                placeholder="name@company.com">
+            </div>
+          </div>
+
+          <div>
+            <label for="password" class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Password</label>
+            <div class="mt-1 relative">
+              <input 
+                id="password" 
+                name="password" 
+                type="password" 
+                x-model="password" 
+                required 
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3.5 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 transition-all"
+                placeholder="••••••••">
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-xs">
+            <label class="flex items-center gap-2 text-slate-600 dark:text-slate-400 cursor-pointer">
+              <input type="checkbox" name="remember" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+              <span>Remember me</span>
+            </label>
+            <a href="#" class="text-indigo-600 hover:text-indigo-500 font-medium">Forgot password?</a>
+          </div>
+
+          <button 
+            type="submit" 
+            class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+            Sign in to Dashboard
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Quiz Questions — Instructor Studio{% endblock %}
+{% block current_page %}Quiz Questions{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ 
+  search: '', 
+  createModal: false, 
+  editModal: false,
+  deleteModal: false,
+  editQuestion: { id: '', question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 20, order_num: 1 },
+  deleteQuestion: { id: '', text: '' }
+}">
+  <!-- HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider font-mono">
+          Assessments
+        </span>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Quiz Questions</h1>
+      </div>
+      <p class="text-xs text-slate-400 mt-1">Author multiple-choice questions, configure options A-D, set scoring marks, and define the correct key.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative w-48 sm:w-64">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+        <input type="text" x-model="search" placeholder="Search questions..." class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-zinc-400">
+      </div>
+      <button type="button" @click="createModal = true" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-lg shadow-xs transition-colors shrink-0">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        <span>Add Question</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- QUESTIONS TABLE -->
+  <div class="bg-slate-900 rounded-xl shadow-xs border border-slate-800 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse table-sticky-header text-xs">
+        <thead>
+          <tr class="bg-slate-950/70 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+            <th class="py-3 px-5">ID</th>
+            <th class="py-3 px-5">Target Quiz</th>
+            <th class="py-3 px-5">Question Prompt</th>
+            <th class="py-3 px-5">Correct Answer</th>
+            <th class="py-3 px-5">Marks</th>
+            <th class="py-3 px-5">Order</th>
+            <th class="py-3 px-5 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/80">
+          {% for q in questions %}
+            <tr class="hover:bg-slate-850/60 transition-colors"
+                x-show="search === '' || '{{ q.question_text | lower }}'.includes(search.toLowerCase()) || '{{ q.quiz_title | lower }}'.includes(search.toLowerCase())">
+              <td class="py-3 px-5 font-mono text-slate-400">#{{ q.id }}</td>
+              <td class="py-3 px-5 font-semibold text-slate-200">{{ q.quiz_title }}</td>
+              <td class="py-3 px-5 font-medium text-white max-w-sm truncate">
+                <span class="font-semibold">{{ q.question_text }}</span>
+                <span class="block text-[11px] text-slate-400 truncate">
+                  A: {{ q.option_a }} | B: {{ q.option_b }} | C: {{ q.option_c }} | D: {{ q.option_d }}
+                </span>
+              </td>
+              <td class="py-3 px-5 font-bold font-mono">
+                <span class="px-2 py-0.5 rounded text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Option {{ q.correct_option }}
+                </span>
+              </td>
+              <td class="py-3 px-5 font-mono text-slate-300">{{ q.marks }} pts</td>
+              <td class="py-3 px-5 font-mono text-slate-400">{{ q.order_num }}</td>
+              <td class="py-3 px-5 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <button type="button" 
+                          @click="editQuestion = { 
+                            id: '{{ q.id }}', 
+                            question_text: `{{ q.question_text | escape }}`, 
+                            option_a: `{{ q.option_a | escape }}`, 
+                            option_b: `{{ q.option_b | escape }}`, 
+                            option_c: `{{ q.option_c | escape }}`, 
+                            option_d: `{{ q.option_d | escape }}`, 
+                            correct_option: '{{ q.correct_option }}', 
+                            marks: '{{ q.marks }}', 
+                            order_num: '{{ q.order_num }}' 
+                          }; editModal = true" 
+                          class="px-2 py-1 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition-colors">
+                    Edit
+                  </button>
+                  <button type="button"
+                          @click="deleteQuestion = { id: '{{ q.id }}', text: `{{ q.question_text | escape }}` }; deleteModal = true"
+                          class="px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded transition-colors">
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CREATE QUESTION MODAL -->
+  <div x-cloak x-show="createModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div @click.away="createModal = false" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white">Add Quiz Question</h3>
+        <button type="button" @click="createModal = false" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form action="/instructor/questions/create" method="POST" class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Target Quiz *</label>
+          <select name="quiz_id" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+            {% for q in my_quizzes %}
+              <option value="{{ q.id }}">{{ q.course_title }} — {{ q.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Question Prompt *</label>
+          <textarea name="question_text" rows="2" required placeholder="State the question clearly..." class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Option A *</label>
+            <input type="text" name="option_a" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Option B *</label>
+            <input type="text" name="option_b" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Option C *</label>
+            <input type="text" name="option_c" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Option D *</label>
+            <input type="text" name="option_d" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Correct Key *</label>
+            <select name="correct_option" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+              <option value="A">Option A</option>
+              <option value="B">Option B</option>
+              <option value="C">Option C</option>
+              <option value="D">Option D</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Marks</label>
+            <input type="number" name="marks" value="20" min="1" max="100" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Sequence Order</label>
+            <input type="number" name="order_num" value="1" min="1" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button type="button" @click="createModal = false" class="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 font-semibold transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors">
+            Save Question
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- EDIT QUESTION MODAL -->
+  <div x-cloak x-show="editModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div @click.away="editModal = false" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white">Edit Question #<span x-text="editQuestion.id"></span></h3>
+        <button type="button" @click="editModal = false" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form :action="'/instructor/questions/edit/' + editQuestion.id" method="POST" class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Question Prompt *</label>
+          <textarea name="question_text" x-model="editQuestion.question_text" rows="2" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Option A *</label>
+            <input type="text" name="option_a" x-model="editQuestion.option_a" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Option B *</label>
+            <input type="text" name="option_b" x-model="editQuestion.option_b" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Option C *</label>
+            <input type="text" name="option_c" x-model="editQuestion.option_c" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Option D *</label>
+            <input type="text" name="option_d" x-model="editQuestion.option_d" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Correct Key *</label>
+            <select name="correct_option" x-model="editQuestion.correct_option" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+              <option value="A">Option A</option>
+              <option value="B">Option B</option>
+              <option value="C">Option C</option>
+              <option value="D">Option D</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Marks</label>
+            <input type="number" name="marks" x-model="editQuestion.marks" min="1" max="100" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Sequence Order</label>
+            <input type="number" name="order_num" x-model="editQuestion.order_num" min="1" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button type="button" @click="editModal = false" class="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 font-semibold transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors">
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- DELETE QUESTION MODAL -->
+  <div x-cloak x-show="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+    <div @click.away="deleteModal = false" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center gap-3 text-red-400">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        <h3 class="text-base font-bold text-white">Delete Question</h3>
+      </div>
+      <p class="text-xs text-slate-400">
+        Are you sure you want to delete <strong class="text-white" x-text="deleteQuestion.text"></strong>? Any recorded learner responses will be removed.
+      </p>
+      <form :action="'/instructor/questions/delete/' + deleteQuestion.id" method="POST" class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800 text-xs">
+        <button type="button" @click="deleteModal = false" class="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 font-medium transition-colors">
+          Cancel
+        </button>
+        <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition-colors">
+          Delete Question
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

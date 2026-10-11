@@ -1,0 +1,653 @@
+{% extends "base.html" %}
+
+{% block title %}{{ table_name | replace('_', ' ') | title }} Table Browser — LearnPulse{% endblock %}
+
+{% block breadcrumbs %}
+<li><span class="text-slate-300 dark:text-slate-700">/</span></li>
+<li><span class="text-slate-500">Tables</span></li>
+<li><span class="text-slate-300 dark:text-slate-700">/</span></li>
+<li class="text-slate-900 dark:text-white font-semibold capitalize">{{ table_name | replace('_', ' ') }}</li>
+{% endblock %}
+
+{% block content %}
+<div x-data="{
+  activeTab: '{{ active_tab }}',
+  slideOverOpen: false,
+  slideMode: 'create',
+  activeRecord: {},
+  viewRecordOpen: false,
+  viewRecordData: {},
+  openCreate() {
+    this.slideMode = 'create';
+    this.activeRecord = {};
+    this.slideOverOpen = true;
+  },
+  openEdit(row) {
+    this.slideMode = 'edit';
+    this.activeRecord = Object.assign({}, row);
+    this.slideOverOpen = true;
+  },
+  openView(row) {
+    this.viewRecordData = row;
+    this.viewRecordOpen = true;
+  }
+}" class="space-y-6">
+
+  <!-- TOP HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-2xl bg-zinc-800 text-white flex items-center justify-center border border-zinc-700 shadow-xs">
+        <i data-lucide="database" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-2xl font-bold tracking-tight text-white capitalize">
+            {{ table_name | replace('_', ' ') }}
+          </h1>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-zinc-800 text-zinc-200 border border-zinc-700">
+            {{ total_rows }} records
+          </span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">
+          3NF Relational Grid &bull; Real-time schema validation &bull; Foreign key resolution
+        </p>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="flex items-center gap-2.5">
+      <!-- Tab Toggle (Data Grid vs Schema) -->
+      <div class="inline-flex rounded-xl bg-slate-800/80 p-1 border border-slate-700/80">
+        <button type="button" 
+                @click="activeTab = 'data'" 
+                :class="activeTab === 'data' ? 'bg-zinc-800 text-white shadow-xs font-semibold' : 'text-slate-400 hover:text-white'"
+                class="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1.5">
+          <i data-lucide="table" class="w-3.5 h-3.5"></i>
+          <span>Data Grid</span>
+        </button>
+        <button type="button" 
+                @click="activeTab = 'schema'" 
+                :class="activeTab === 'schema' ? 'bg-zinc-800 text-white shadow-xs font-semibold' : 'text-slate-400 hover:text-white'"
+                class="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1.5">
+          <i data-lucide="binary" class="w-3.5 h-3.5"></i>
+          <span>Schema & Indexes</span>
+        </button>
+      </div>
+
+      <!-- Add Row Button -->
+      <button type="button" 
+              @click="openCreate()" 
+              class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-zinc-950 bg-white hover:bg-zinc-200 rounded-xl shadow-sm transition-colors">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        <span>Add Row</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 1: DATA GRID -->
+  <!-- ========================================================================= -->
+  <div x-show="activeTab === 'data'" class="space-y-4">
+    <!-- FILTER & SEARCH BAR WITH SORT BY AND PER-PAGE OPTIONS -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900 p-3.5 rounded-xl border border-slate-800 shadow-xs">
+      <form method="GET" action="/admin/tables/{{ table_name }}" class="flex-1 w-full flex flex-wrap items-center gap-2.5">
+        <div class="relative flex-1 min-w-[200px]">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+          <input type="text" 
+                 name="q" 
+                 value="{{ search }}" 
+                 placeholder="Search {{ table_name }} records..." 
+                 class="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+        </div>
+
+        <!-- Sort By Controls -->
+        <div class="flex items-center gap-1.5">
+          <label class="text-[11px] font-semibold text-slate-400 whitespace-nowrap flex items-center gap-1">
+            <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Sort by:</span>
+          </label>
+          <select name="sort" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+            {% for col in schema.columns %}
+              <option value="{{ col.name }}" {% if sort_col == col.name %}selected{% endif %}>{{ col.name }}</option>
+            {% endfor %}
+          </select>
+          <select name="dir" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+            <option value="asc" {% if sort_dir == 'asc' %}selected{% endif %}>Asc (A-Z / 1-9)</option>
+            <option value="desc" {% if sort_dir == 'desc' %}selected{% endif %}>Desc (Z-A / 9-1)</option>
+          </select>
+        </div>
+
+        <!-- Per-Page Controls (Show all records by default to match sidebar!) -->
+        <div class="flex items-center gap-1.5">
+          <label class="text-[11px] font-semibold text-slate-400 whitespace-nowrap flex items-center gap-1">
+            <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Show:</span>
+          </label>
+          <select name="per_page" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-zinc-400">
+            <option value="all" {% if per_page_arg == 'all' or per_page >= 1000 %}selected{% endif %}>All ({{ total_rows }})</option>
+            <option value="15" {% if per_page_arg == '15' and per_page < 1000 %}selected{% endif %}>15 rows</option>
+            <option value="50" {% if per_page_arg == '50' and per_page < 1000 %}selected{% endif %}>50 rows</option>
+            <option value="100" {% if per_page_arg == '100' and per_page < 1000 %}selected{% endif %}>100 rows</option>
+          </select>
+        </div>
+
+        <button type="submit" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white text-zinc-950 hover:bg-zinc-200 transition-colors shadow-sm">
+          Apply
+        </button>
+        {% if search or (sort_col and sort_col != schema.primary_key) or sort_dir != 'asc' or (per_page_arg and per_page_arg != 'all') %}
+          <a href="/admin/tables/{{ table_name }}" class="px-2.5 py-1.5 text-xs font-semibold text-rose-400 hover:text-rose-300">
+            Reset
+          </a>
+        {% endif %}
+      </form>
+
+      <div class="flex items-center gap-2 text-xs text-slate-400 whitespace-nowrap">
+        {% if rows | length == total_rows %}
+          <span>Showing all <strong class="text-white">{{ total_rows }}</strong> records</span>
+        {% else %}
+          <span>Showing <strong class="text-white">{{ rows | length }}</strong> of <strong class="text-white">{{ total_rows }}</strong> records</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- TABLE CARD -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div class="overflow-x-auto max-h-[620px] custom-scrollbar">
+        <table class="w-full text-left border-collapse text-xs table-sticky-header">
+          <thead>
+            <tr class="bg-slate-50/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">
+              <th class="px-4 py-3 text-center w-14">#</th>
+              {% for col in schema.columns %}
+                <th class="px-4 py-3 whitespace-nowrap">
+                  <a href="/admin/tables/{{ table_name }}?sort={{ col.name }}&dir={{ 'desc' if sort_col == col.name and sort_dir == 'asc' else 'asc' }}&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}"
+                     class="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+                    <span>{{ col.name }}</span>
+                    {% if col.is_pk %}
+                      <span class="text-[9px] px-1 py-0.2 rounded bg-zinc-800 text-zinc-200 border border-zinc-700 font-bold">PK</span>
+                    {% elif col.is_fk %}
+                      <span class="text-[9px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">FK</span>
+                    {% endif %}
+                    {% if sort_col == col.name %}
+                      <i data-lucide="{{ 'chevron-up' if sort_dir == 'asc' else 'chevron-down' }}" class="w-3.5 h-3.5 text-white"></i>
+                    {% else %}
+                      <i data-lucide="chevrons-up-down" class="w-3 h-3 text-slate-500 opacity-60"></i>
+                    {% endif %}
+                  </a>
+                </th>
+              {% endfor %}
+              <th class="px-4 py-3 text-right w-24">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 font-normal">
+            {% for r in rows %}
+              <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors group">
+                <td class="px-4 py-3 text-center text-slate-400 font-mono text-[11px]">
+                  {{ loop.index + ((page - 1) * per_page) }}
+                </td>
+
+                {% for col in schema.columns %}
+                  <td class="px-4 py-3 whitespace-nowrap text-slate-700 dark:text-slate-300 max-w-xs truncate">
+                    {% set val = r[col.name] %}
+                    
+                    {% if val is none %}
+                      <span class="text-slate-400 dark:text-slate-600 italic">NULL</span>
+
+                    {% elif col.is_fk and col.name in r._fk_display %}
+                      <!-- Foreign Key resolved readable link -->
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40 text-[11px] font-medium" 
+                            title="{{ r._fk_display[col.name] }}">
+                        <i data-lucide="link-2" class="w-3 h-3 text-amber-500"></i>
+                        <span class="truncate max-w-[200px]">{{ r._fk_display[col.name] }}</span>
+                      </span>
+
+                    {% elif col.data_type == 'enum' %}
+                      <!-- Status Pill Badge -->
+                      <span class="px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider
+                        {{ 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/60' if val in ['published', 'completed', 'active', 'beginner'] else '' }}
+                        {{ 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60' if val in ['draft', 'intermediate', 'instructor'] else '' }}
+                        {{ 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60' if val in ['archived', 'dropped', 'advanced'] else '' }}
+                        {{ 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/60' if val in ['admin', 'learner'] else '' }}">
+                        {{ val }}
+                      </span>
+
+                    {% elif col.col_type.startswith('tinyint(1)') %}
+                      {% if val %}
+                        <span class="text-emerald-600 font-semibold inline-flex items-center gap-1">
+                          <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> TRUE
+                        </span>
+                      {% else %}
+                        <span class="text-slate-400 font-semibold inline-flex items-center gap-1">
+                          <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> FALSE
+                        </span>
+                      {% endif %}
+
+                    {% elif col.name == 'password_hash' %}
+                      <span class="font-mono text-[11px] text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 select-all max-w-[200px] truncate block font-normal" title="{{ val }}">{{ val }}</span>
+
+                    {% elif col.data_type in ['decimal', 'float'] and 'price' in col.name %}
+                      <span class="font-semibold text-slate-900 dark:text-white">${{ "%.2f"|format(val) }}</span>
+
+                    {% elif col.name == 'progress' %}
+                      <div class="flex items-center gap-2 w-28">
+                        <div class="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                          <div class="bg-indigo-600 h-1.5 rounded-full" style="width: {{ val }}%"></div>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-600 dark:text-slate-400">{{ val }}%</span>
+                      </div>
+
+                    {% else %}
+                      <span title="{{ val }}">{{ val }}</span>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+
+                <!-- ROW ACTIONS MENU -->
+                <td class="px-4 py-3 text-right whitespace-nowrap">
+                  <div class="inline-flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <button type="button" 
+                            @click='openView({{ r | tojson }})'
+                            title="View Details"
+                            class="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                      <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button type="button" 
+                            @click='openEdit({{ r | tojson }})'
+                            title="Edit Record"
+                            class="p-1 rounded-md text-slate-400 hover:text-amber-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                      <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button type="button" 
+                            @click="$store.deleteModal.open('/admin/tables/{{ table_name }}/delete/{{ r[schema.primary_key] }}', 'Delete {{ table_name.rstrip('s') }} #{{ r[schema.primary_key] }}', 'Are you sure you want to permanently delete this {{ table_name.rstrip('s') }} record?')"
+                            title="Delete Record"
+                            class="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="{{ (schema.columns | length) + 2 }}" class="py-12 text-center text-slate-400">
+                  <div class="flex flex-col items-center justify-center gap-2">
+                    <i data-lucide="inbox" class="w-8 h-8 opacity-40"></i>
+                    <p class="text-sm font-medium">No records found matching query</p>
+                    <button type="button" @click="openCreate()" class="text-xs text-indigo-600 hover:underline">
+                      Add the first row &rarr;
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINATION CONTROLS -->
+      <div class="px-4 py-3 border-t border-slate-800 bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <div>
+          {% if total_pages <= 1 or per_page >= 1000 %}
+            Showing all <span class="font-bold text-white">{{ total_rows }}</span> records
+          {% else %}
+            Showing page <span class="font-bold text-white">{{ page }}</span> of <span class="font-bold text-white">{{ total_pages }}</span> ({{ total_rows }} total records)
+          {% endif %}
+        </div>
+        {% if total_pages > 1 and per_page < 1000 %}
+          <div class="flex items-center gap-1.5">
+            {% if page > 1 %}
+              <a href="/admin/tables/{{ table_name }}?page=1&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}&sort={{ sort_col }}&dir={{ sort_dir }}" class="px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300">First</a>
+              <a href="/admin/tables/{{ table_name }}?page={{ page - 1 }}&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}&sort={{ sort_col }}&dir={{ sort_dir }}" class="px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300">Prev</a>
+            {% endif %}
+
+            <span class="px-3 py-1 font-bold bg-white text-zinc-950 rounded-lg shadow-sm">
+              {{ page }}
+            </span>
+
+            {% if page < total_pages %}
+              <a href="/admin/tables/{{ table_name }}?page={{ page + 1 }}&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}&sort={{ sort_col }}&dir={{ sort_dir }}" class="px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300">Next</a>
+              <a href="/admin/tables/{{ table_name }}?page={{ total_pages }}&per_page={{ per_page_arg }}{% if search %}&q={{ search }}{% endif %}&sort={{ sort_col }}&dir={{ sort_dir }}" class="px-2.5 py-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300">Last</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 2: SCHEMA & INDEXES -->
+  <!-- ========================================================================= -->
+  <div x-show="activeTab === 'schema'" class="space-y-6" x-cloak>
+    <!-- 1. COLUMNS INTROSPECTION -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between">
+        <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="columns" class="w-4 h-4 text-indigo-500"></i>
+          <span>Table Columns Definition (INFORMATION_SCHEMA.COLUMNS)</span>
+        </h3>
+        <span class="text-xs text-slate-400 font-mono">{{ schema.columns | length }} Columns</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-50/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase tracking-wider font-semibold">
+            <tr>
+              <th class="px-4 py-2.5">Column</th>
+              <th class="px-4 py-2.5">Data Type</th>
+              <th class="px-4 py-2.5">Nullable</th>
+              <th class="px-4 py-2.5">Default</th>
+              <th class="px-4 py-2.5">Key / Reference</th>
+              <th class="px-4 py-2.5">Extra</th>
+              <th class="px-4 py-2.5">CHECK / Validation Rule</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
+            {% for c in schema.columns %}
+              <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                <td class="px-4 py-2.5 font-bold text-slate-900 dark:text-white">
+                  {{ c.name }}
+                </td>
+                <td class="px-4 py-2.5 text-indigo-600 dark:text-indigo-400">
+                  {{ c.col_type }}
+                </td>
+                <td class="px-4 py-2.5">
+                  {% if c.nullable %}
+                    <span class="text-emerald-500">YES</span>
+                  {% else %}
+                    <span class="text-rose-500 font-bold">NOT NULL</span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-2.5 text-slate-500">
+                  {{ c.default if c.default is not none else 'NULL' }}
+                </td>
+                <td class="px-4 py-2.5">
+                  {% if c.is_pk %}
+                    <span class="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold">PRIMARY KEY</span>
+                  {% elif c.is_fk %}
+                    <span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold">
+                      &rarr; {{ c.fk_info.ref_table }}.{{ c.fk_info.ref_col }}
+                    </span>
+                  {% else %}
+                    <span class="text-slate-400">—</span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-2.5 text-slate-500">
+                  {{ c.extra or '—' }}
+                </td>
+                <td class="px-4 py-2.5 font-sans text-slate-600 dark:text-slate-400 text-xs">
+                  {{ c.hint or '—' }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2. INDEXES INTROSPECTION -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+        <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i data-lucide="key" class="w-4 h-4 text-amber-500"></i>
+          <span>Indexes & Constraints (INFORMATION_SCHEMA.STATISTICS)</span>
+        </h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs font-mono text-[11px]">
+          <thead class="bg-slate-50/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase tracking-wider font-semibold font-sans text-xs">
+            <tr>
+              <th class="px-4 py-2.5">Index Name</th>
+              <th class="px-4 py-2.5">Column Name</th>
+              <th class="px-4 py-2.5">Unique</th>
+              <th class="px-4 py-2.5">Index Type</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60">
+            {% for idx in schema.indexes %}
+              <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                <td class="px-4 py-2.5 font-bold text-slate-900 dark:text-white">{{ idx.INDEX_NAME }}</td>
+                <td class="px-4 py-2.5 text-indigo-600 dark:text-indigo-400">{{ idx.COLUMN_NAME }}</td>
+                <td class="px-4 py-2.5">
+                  {% if idx.NON_UNIQUE == 0 %}
+                    <span class="text-emerald-500 font-bold">UNIQUE</span>
+                  {% else %}
+                    <span class="text-slate-400">NON-UNIQUE</span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-2.5 text-slate-500">{{ idx.INDEX_TYPE }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- SLIDE-OVER FORM FOR ADD ROW / EDIT ROW -->
+  <!-- ========================================================================= -->
+  <div x-cloak x-show="slideOverOpen" class="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+      <!-- Backdrop -->
+      <div x-show="slideOverOpen"
+           x-transition:enter="ease-in-out duration-300"
+           x-transition:enter-start="opacity-0"
+           x-transition:enter-end="opacity-100"
+           x-transition:leave="ease-in-out duration-300"
+           x-transition:leave-start="opacity-100"
+           x-transition:leave-end="opacity-0"
+           class="absolute inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
+           @click="slideOverOpen = false"></div>
+
+      <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+        <div x-show="slideOverOpen"
+             x-transition:enter="transform transition ease-in-out duration-300 sm:duration-400"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transform transition ease-in-out duration-300 sm:duration-400"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full"
+             class="pointer-events-auto w-screen max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800">
+          
+          <!-- Slide-Over Header -->
+          <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <template x-if="slideMode === 'create'">
+                  <span>Add New {{ table_name.rstrip('s') | title }} Record</span>
+                </template>
+                <template x-if="slideMode === 'edit'">
+                  <span>Edit {{ table_name.rstrip('s') | title }} #<span x-text="activeRecord['{{ schema.primary_key }}']"></span></span>
+                </template>
+              </h2>
+              <p class="text-xs text-slate-500">Auto-generated schema form with MySQL validation</p>
+            </div>
+            <button type="button" @click="slideOverOpen = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <!-- Slide-Over Form -->
+          <form :action="slideMode === 'create' ? '/admin/tables/{{ table_name }}/create' : '/admin/tables/{{ table_name }}/update/' + activeRecord['{{ schema.primary_key }}']" 
+                method="POST" 
+                class="flex-1 overflow-y-auto p-6 space-y-4">
+            
+            {% for col in schema.columns %}
+              {% if col.is_pk and 'auto_increment' in col.extra.lower() %}
+                <!-- Auto-increment PK displayed read-only on Edit, hidden on Add -->
+                <div x-show="slideMode === 'edit'" class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                  <label class="block text-xs font-semibold text-slate-500 mb-1">
+                    {{ col.name }} (Primary Key)
+                  </label>
+                  <input type="text" 
+                         :value="activeRecord['{{ col.name }}']" 
+                         disabled 
+                         class="w-full text-xs font-mono bg-transparent text-slate-700 dark:text-slate-300 font-bold focus:outline-none">
+                </div>
+
+              {% elif col.is_fk and col.name in fk_options %}
+                <!-- Foreign Key Dropdown populated with readable names -->
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {{ col.name | replace('_id', '') | title }} (Foreign Key)
+                    {% if not col.nullable %}<span class="text-rose-500">*</span>{% endif %}
+                  </label>
+                  <select name="{{ col.name }}" 
+                          :value="activeRecord['{{ col.name }}']" 
+                          {% if not col.nullable %}required{% endif %}
+                          class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                    <option value="">-- Select referenced record --</option>
+                    {% for opt in fk_options[col.name] %}
+                      <option value="{{ opt.id }}">{{ opt.label }}</option>
+                    {% endfor %}
+                  </select>
+                  {% if col.hint %}
+                    <p class="text-[11px] text-indigo-500 mt-1">{{ col.hint }}</p>
+                  {% endif %}
+                </div>
+
+              {% elif col.data_type == 'enum' %}
+                <!-- ENUM Dropdown -->
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {{ col.name | title }}
+                    {% if not col.nullable %}<span class="text-rose-500">*</span>{% endif %}
+                  </label>
+                  <select name="{{ col.name }}" 
+                          :value="activeRecord['{{ col.name }}'] || '{{ col.enum_values[0] if col.enum_values else '' }}'"
+                          class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600 capitalize">
+                    {% for ev in col.enum_values %}
+                      <option value="{{ ev }}">{{ ev | title }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+              {% elif col.col_type.startswith('tinyint(1)') %}
+                <!-- Boolean Switch / Select -->
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {{ col.name | title }}
+                  </label>
+                  <select name="{{ col.name }}" 
+                          :value="activeRecord['{{ col.name }}'] ? '1' : '0'"
+                          class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                    <option value="1">True / Yes</option>
+                    <option value="0">False / No</option>
+                  </select>
+                </div>
+
+              {% elif col.name == 'password_hash' %}
+                <!-- Special password field for users table -->
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Password
+                    <template x-if="slideMode === 'create'"><span class="text-rose-500">*</span></template>
+                  </label>
+                  <input type="password" 
+                         name="password" 
+                         placeholder="Leave blank to keep existing password on edit"
+                         class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                  <p class="text-[11px] text-slate-500 mt-1">Automatically hashed with SHA-256 upon save.</p>
+                </div>
+
+              {% elif col.data_type in ['datetime', 'timestamp'] %}
+                <!-- Datetime Picker -->
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {{ col.name | replace('_', ' ') | title }}
+                    {% if not col.nullable and not col.default %}<span class="text-rose-500">*</span>{% endif %}
+                  </label>
+                  <input type="text" 
+                         name="{{ col.name }}" 
+                         :value="activeRecord['{{ col.name }}'] || ''"
+                         placeholder="YYYY-MM-DD HH:MM:SS"
+                         class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono">
+                  <p class="text-[10px] text-slate-500 mt-0.5">Format: YYYY-MM-DD HH:MM:SS (leave empty for current timestamp if default exists)</p>
+                </div>
+
+              {% elif col.data_type in ['text', 'longtext', 'mediumtext'] %}
+                <!-- Textarea -->
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {{ col.name | replace('_', ' ') | title }}
+                    {% if not col.nullable %}<span class="text-rose-500">*</span>{% endif %}
+                  </label>
+                  <textarea name="{{ col.name }}" 
+                            rows="3" 
+                            :value="activeRecord['{{ col.name }}'] || ''"
+                            {% if not col.nullable %}required{% endif %}
+                            class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600"></textarea>
+                </div>
+
+              {% else %}
+                <!-- Standard input -->
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {{ col.name | replace('_', ' ') | title }}
+                    {% if not col.nullable and not col.default %}<span class="text-rose-500">*</span>{% endif %}
+                  </label>
+                  <input type="{{ 'number' if col.data_type in ['int', 'bigint', 'tinyint', 'decimal'] else 'text' }}" 
+                         {% if col.data_type == 'decimal' %}step="0.01"{% endif %}
+                         name="{{ col.name }}" 
+                         :value="activeRecord['{{ col.name }}'] !== undefined ? activeRecord['{{ col.name }}'] : ''"
+                         {% if not col.nullable and not col.default %}required{% endif %}
+                         class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                  {% if col.hint %}
+                    <p class="text-[11px] text-indigo-500 mt-1 font-medium">{{ col.hint }}</p>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+
+            <!-- Form Actions -->
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2.5">
+              <button type="button" 
+                      @click="slideOverOpen = false" 
+                      class="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                Cancel
+              </button>
+              <button type="submit" 
+                      class="px-5 py-2 text-xs font-bold text-zinc-950 bg-white hover:bg-zinc-200 rounded-xl shadow-sm transition-colors">
+                <span x-text="slideMode === 'create' ? 'Create Record' : 'Save Changes'"></span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW RECORD DETAIL MODAL -->
+  <div x-cloak x-show="viewRecordOpen" class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <div x-show="viewRecordOpen" 
+           @click="viewRecordOpen = false" 
+           class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"></div>
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+      
+      <div x-show="viewRecordOpen" 
+           class="inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-slate-200 dark:border-slate-800 p-6">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-slate-800">
+          <h3 class="text-base font-bold text-slate-900 dark:text-white">Record Details</h3>
+          <button type="button" @click="viewRecordOpen = false" class="text-slate-400 hover:text-slate-600">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
+          <template x-for="(val, key) in viewRecordData" :key="key">
+            <template x-if="key !== '_fk_display'">
+              <div class="flex flex-col sm:flex-row sm:items-baseline justify-between py-1.5 border-b border-slate-100 dark:border-slate-800/60 text-xs">
+                <span class="font-semibold text-slate-500 capitalize" x-text="key.replace('_', ' ')"></span>
+                <span class="font-mono text-slate-900 dark:text-white font-medium text-right break-all" x-text="val !== null ? val : 'NULL'"></span>
+              </div>
+            </template>
+          </template>
+        </div>
+        <div class="mt-5 flex justify-end">
+          <button type="button" @click="viewRecordOpen = false" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

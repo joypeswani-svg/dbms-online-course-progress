@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% import "macros/components.html" as ui %}
+
+{% block title %}Quiz & Assessment Builder — LearnPulse{% endblock %}
+{% block current_page %}Quizzes & Question Builder{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ 
+  selectedQuizId: {{ selected_quiz.id if selected_quiz else (quizzes[0].id if quizzes else 1) }},
+  addQuestionOpen: false,
+  newQ: {
+    question_text: '',
+    option_a: '',
+    option_b: '',
+    option_c: '',
+    option_d: '',
+    correct_option: 'A',
+    marks: 20
+  }
+}">
+  <!-- HEADER -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Assessment & Question Builder</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Build multiple-choice assessment banks with automated scoring rules.</p>
+    </div>
+  </div>
+
+  <!-- SPLIT BUILDER INTERFACE -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+    <!-- LEFT: QUIZ LIST SELECTOR -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-5 space-y-3">
+      <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Available Quizzes ({{ quizzes | length }})</h3>
+      <div class="space-y-2">
+        {% for q in quizzes %}
+          <a href="/admin/quizzes?quiz_id={{ q.id }}" 
+             class="block p-3.5 rounded-xl border transition-all text-left {{ 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 ring-1 ring-indigo-600' if q.id == selected_quiz.id else 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900' }}">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">{{ q.course_title }}</span>
+              <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono font-bold">{{ q.questions | length }} Qs</span>
+            </div>
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white mt-1 line-clamp-1">{{ q.title }}</h4>
+            <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <span>Pass: {{ q.passing_marks }}/{{ q.total_marks }}</span>
+              <span>Max: {{ q.max_attempts }} tries</span>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- RIGHT: SELECTED QUIZ QUESTION EDITOR -->
+    <div class="lg:col-span-2 space-y-6">
+      {% if selected_quiz %}
+        <!-- QUIZ OVERVIEW CARD -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-xs font-semibold text-indigo-600">{{ selected_quiz.course_title }}</span>
+              <span class="text-slate-300 dark:text-slate-700">&bull;</span>
+              <span class="text-xs text-slate-400">{{ selected_quiz.module_title }}</span>
+            </div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ selected_quiz.title }}</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ selected_quiz.description }}</p>
+          </div>
+          <button type="button" @click="addQuestionOpen = true" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm transition-colors flex-shrink-0">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Add Question</span>
+          </button>
+        </div>
+
+        <!-- QUESTIONS ACCORDION LIST -->
+        <div class="space-y-4">
+          {% for question in selected_quiz.questions %}
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-5 space-y-4">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3">
+                  <span class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {{ question.order_num }}
+                  </span>
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-white leading-relaxed">{{ question.question_text }}</h3>
+                    <span class="text-[10px] text-slate-400 font-medium mt-1 inline-block">Value: {{ question.marks }} Marks</span>
+                  </div>
+                </div>
+                <button type="button" 
+                        @click="$store.deleteModal.open('/admin/questions/delete/{{ question.id }}?quiz_id={{ selected_quiz.id }}', 'Delete Question {{ question.order_num }}', 'Are you sure? This will remove this question from the quiz assessment.')"
+                        class="p-1 text-slate-400 hover:text-rose-600 transition-colors">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+
+              <!-- OPTIONS A-D LIST WITH HIGHLIGHTED CORRECT OPTION -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                <div class="p-3 rounded-lg border text-xs flex items-center justify-between {{ 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 font-medium' if question.correct_option == 'A' else 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300' }}">
+                  <span><strong class="font-bold mr-1">A.</strong> {{ question.option_a }}</span>
+                  {% if question.correct_option == 'A' %}
+                    <span class="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-900 px-1.5 py-0.5 rounded">
+                      <i data-lucide="check" class="w-3 h-3"></i> Correct
+                    </span>
+                  {% endif %}
+                </div>
+
+                <div class="p-3 rounded-lg border text-xs flex items-center justify-between {{ 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 font-medium' if question.correct_option == 'B' else 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300' }}">
+                  <span><strong class="font-bold mr-1">B.</strong> {{ question.option_b }}</span>
+                  {% if question.correct_option == 'B' %}
+                    <span class="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-900 px-1.5 py-0.5 rounded">
+                      <i data-lucide="check" class="w-3 h-3"></i> Correct
+                    </span>
+                  {% endif %}
+                </div>
+
+                <div class="p-3 rounded-lg border text-xs flex items-center justify-between {{ 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 font-medium' if question.correct_option == 'C' else 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300' }}">
+                  <span><strong class="font-bold mr-1">C.</strong> {{ question.option_c }}</span>
+                  {% if question.correct_option == 'C' %}
+                    <span class="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-900 px-1.5 py-0.5 rounded">
+                      <i data-lucide="check" class="w-3 h-3"></i> Correct
+                    </span>
+                  {% endif %}
+                </div>
+
+                <div class="p-3 rounded-lg border text-xs flex items-center justify-between {{ 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 font-medium' if question.correct_option == 'D' else 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300' }}">
+                  <span><strong class="font-bold mr-1">D.</strong> {{ question.option_d }}</span>
+                  {% if question.correct_option == 'D' %}
+                    <span class="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-900 px-1.5 py-0.5 rounded">
+                      <i data-lucide="check" class="w-3 h-3"></i> Correct
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- ADD QUESTION SLIDE-OVER / MODAL -->
+        <div x-cloak x-show="addQuestionOpen" class="fixed inset-0 z-50 overflow-y-auto" role="dialog">
+          <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="addQuestionOpen = false"></div>
+            <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 dark:border-slate-800 p-6 z-10">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <h3 class="text-base font-semibold text-slate-900 dark:text-white">Add Question & Options</h3>
+                <button @click="addQuestionOpen = false" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+              </div>
+              <form action="/admin/questions/create" method="POST" class="mt-4 space-y-4">
+                <input type="hidden" name="quiz_id" value="{{ selected_quiz.id }}">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Question Text</label>
+                  <textarea name="question_text" rows="2" required placeholder="Enter clear multiple-choice question..." class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600"></textarea>
+                </div>
+                
+                <div class="space-y-3">
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Option A</label>
+                      <label class="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+                        <input type="radio" name="correct_option" value="A" required class="text-indigo-600">
+                        <span class="text-[11px] font-semibold text-emerald-600">Mark Correct</span>
+                      </label>
+                    </div>
+                    <input type="text" name="option_a" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                  </div>
+
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Option B</label>
+                      <label class="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+                        <input type="radio" name="correct_option" value="B" class="text-indigo-600">
+                        <span class="text-[11px] font-semibold text-emerald-600">Mark Correct</span>
+                      </label>
+                    </div>
+                    <input type="text" name="option_b" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                  </div>
+
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Option C</label>
+                      <label class="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+                        <input type="radio" name="correct_option" value="C" class="text-indigo-600">
+                        <span class="text-[11px] font-semibold text-emerald-600">Mark Correct</span>
+                      </label>
+                    </div>
+                    <input type="text" name="option_c" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                  </div>
+
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Option D</label>
+                      <label class="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+                        <input type="radio" name="correct_option" value="D" class="text-indigo-600">
+                        <span class="text-[11px] font-semibold text-emerald-600">Mark Correct</span>
+                      </label>
+                    </div>
+                    <input type="text" name="option_d" required class="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                  </div>
+                </div>
+
+                <div class="pt-3 flex justify-end gap-2">
+                  <button type="button" @click="addQuestionOpen = false" class="px-4 py-2 text-xs rounded-lg border border-slate-300 text-slate-700 dark:text-slate-300">Cancel</button>
+                  <button type="submit" class="px-4 py-2 text-xs rounded-lg bg-indigo-600 text-white font-semibold">Save Question</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+      {% else %}
+        {{ ui.empty_state('help-circle', 'Select a Quiz', 'Choose a quiz from the left panel to inspect and build its questions.') }}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
